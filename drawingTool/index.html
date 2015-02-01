@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" style="height: 100%;">
+<head>
+	<title>Drawing tool test page</title>
+
+	<meta content="text/html;charset=utf-8" http-equiv="Content-Type">
+	<meta content="utf-8" http-equiv="encoding">
+
+	<link rel="stylesheet" type="text/css" href="resources/css/main.css">
+	<link rel="stylesheet" type="text/css" href="resources/css/bootstrap.css">
+
+	<script type="text/javascript" src="http://maps.google.com/maps/api/js?sensor=false&libraries=geometry"></script>
+	<script src="resources/js/fabric.js"></script>
+	<script src="resources/js/util.js"></script>
+	<script src="resources/js/GoogleImageProvider.js"></script>
+	<script src="resources/js/Intersections.js"></script>
+	<script src="resources/js/drawingTool.js"></script>
+	<script src="resources/js/drawingEngines/drawingEnginePixi.js"></script>
+	<script src="resources/js/canvasTransformationTool.js"></script>
+	<script src="resources/js/pixiVersions/pixi.dev2.2.3.js"></script>
+	<script src="resources/js/spectrum.js"></script>
+	<script src="resources/js/demo.js"></script>
+</head>
+<body style="height: 100%;">
+	<div class="codeBlock">
+		<label class="sr-only" for="exampleInputAmount">Script to run</label>
+		<div class="input-group">
+			<textarea placeholder="Code" class="form-control" id="scriptInput"></textarea>
+		</div>
+		<button class="btn btn-primary runCodeButton" onclick="test()"> Run </button>
+	</div>
+	<div style="height: 450px;">
+		<div id="canvas2Wrap" style="height: 100%;">
+			<input id="zoomSlider" type=range min=10 max=30 value=10 step=1 orient="vertical">
+			<canvas id="canvas2" style="border:1px solid #000;width:100%;height: 100%;"></canvas>
+		</div>
+		<div style="display: none;" id="map-canvas"></div>
+	</div>
+</body>
+</html>

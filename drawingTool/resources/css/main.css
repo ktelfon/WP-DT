@@ -1,0 +1,35 @@
+/*
+
+	Demo general styles
+
+*/
+body{
+	overflow:hidden;
+}
+.codeBlock{
+	position: absolute;
+	margin-left: 48%;
+	margin-top: 10px;
+	margin-bottom: 10px;
+}
+.runCodeButton{
+	margin-left: 36%;
+}
+
+/*
+
+	Slider styles
+
+*/
+
+#zoomSlider{
+	position: absolute;
+	top: 5%;
+	right: 10px;
+	width: 10px;
+	height: 87%;
+	background: none;
+    box-shadow: 1px 1px 2px 0px rgb(103, 103, 103);
+	-webkit-appearance: slider-vertical;
+	 writing-mode: bt-lr;
+}
