@@ -8,7 +8,10 @@ var LayoutService = function(constructorOptions) {
     inter = new Intersection(),
     drawingEngine = DrawingEngine(),
     googleImageProvider = GoogleImageProvider(),
-    showZoomControls = false,
+    zoomController = {
+        showZoomControls : false,
+        isCreated : false
+    },
     canvasElement = {},
     canvasWrapElement = {},
     util = Util();
@@ -227,23 +230,6 @@ layoutService.createCanvas = function(elementId, elementWrap) {
     canvasWrapElement = document.getElementById(elementWrap);
     canvas = drawingEngine.createCanvas(elementId, elementWrap);
     return canvas;
-};
-layoutService.addEventListeners = function(elementId) {
-
-    if(canvasElement!=undefined){
-        // adds mouse wheel listener for all browsers
-        if (canvasElement.addEventListener) {
-            // IE9, Chrome, Safari, Opera
-            canvasElement.addEventListener("mousewheel", drawingEngine.MouseWheelHandler, false);
-            // Firefox
-            canvasElement.addEventListener("DOMMouseScroll", drawingEngine.MouseWheelHandler, false);
-        }else{ 
-            // IE 6/7/8
-            canvasElement.attachEvent("onmousewheel", drawingEngine.MouseWheelHandler);
-        }
-
-        drawingEngine.addEventListeners(elementId);
-    }
 };
 layoutService.increaseZoomLevel = function(){
     drawingEngine.increaseZoomLevel();
@@ -581,25 +567,110 @@ layoutService.expandPictureToScreen = function(){
         });
 };
 
+layoutService.addEventListeners = function(elementId) {
+
+    if(canvasElement!=undefined){
+        // adds mouse wheel listener for all browsers
+        if (canvasElement.addEventListener) {
+            // IE9, Chrome, Safari, Opera
+            canvasElement.addEventListener("mousewheel", MouseWheelHandler, false);
+            // Firefox
+            canvasElement.addEventListener("DOMMouseScroll", MouseWheelHandler, false);
+        }else{ 
+            // IE 6/7/8
+            canvasElement.attachEvent("onmousewheel", MouseWheelHandler);
+        }
+
+        drawingEngine.addEventListeners(elementId);
+    }
+};
+
 layoutService.addZoomController=function(){
     if(canvasWrapElement != undefined){
-        var html = '<input type=range 
-        min='+ drawingEngine.getMinScale()+' 
-        max='+ drawingEngine.getMaxScale()+' 
-        value='+drawingEngine.getDefaultContainerScale()+' 
-        step=0.1>';
-        appendHtml(canvasWrapElement, html); 
+        if(zoomController.showZoomControls){
+            // hide control
+            zoomController.showZoomControls = false;
+        }else{
+            // show controll
+            zoomController.showZoomControls = true;
+            zoomController.isCreated = true;
+            zoomController.elements = {};
+            // creating html elements
+            var zoomSliderControllerElement = "<div id='zoomSliderController'></div>",
+            slider = "<input id='zoomSlider' type=range \n\
+            min="+ drawingEngine.getMinScale()+" \n\
+            max="+ drawingEngine.getMaxScale()+" \n\
+            value="+drawingEngine.getDefaultContainerScale()+" \n\
+            step=0.1 orient='vertical'>",
+            zoomInButton = "<button id='zoomInButton' class='zoomSliderButton'>+</button>",
+            zoomOutButton = "<button id='zoomOutButton' class='zoomSliderButton'>-</button>";
+
+            // add zoomController to canvas wrap
+            util.appendHtml(canvasWrapElement, zoomSliderControllerElement);
+            // add buttons to control
+            zoomController.elements.controllerWrap = document.getElementById("zoomSliderController");
+            util.appendHtml(zoomController.elements.controllerWrap, zoomInButton);
+            util.appendHtml(zoomController.elements.controllerWrap, slider);
+            util.appendHtml(zoomController.elements.controllerWrap, zoomOutButton);
+
+            zoomController.elements = {
+                slider : document.getElementById("zoomSlider"),
+                zoomInButton: document.getElementById("zoomInButton"),
+                zoomOutButton: document.getElementById("zoomOutButton")
+            };
+           
+            zoomController.elements.slider.minValue = drawingEngine.getMinScale();
+            zoomController.elements.slider.maxValue = drawingEngine.getMaxScale();
+            zoomController.elements.slider.currentZoomValue = drawingEngine.getDefaultContainerScale();
+
+            setStylesToZoomControllerElements(zoomController.elements);
+            addEventListenersToZoomControllerElements(zoomController.elements);
+        } 
     }
+};
+
+function setStylesToZoomControllerElements(elements){
+    // setting style to slider element
+    elements.slider.style.top = (canvasWrapElement.offsetTop + (elements.zoomInButton.offsetHeight * 2.5)).toString()+"px"; 
+    elements.slider.style.height = (canvasWrapElement.offsetHeight * 0.65).toString()+"px";
+    // setting style to zoom in button element
+    elements.zoomInButton.style.top = (canvasWrapElement.offsetTop + (elements.zoomInButton.offsetHeight )).toString()+"px";
+    // setting style to zoom out button element
+    elements.zoomOutButton.style.top = ((elements.slider.offsetTop * 0.65) 
+        + (elements.slider.offsetHeight) 
+        + (elements.zoomInButton.offsetHeight * 2.5)).toString()+"px";
+}
+
+function addEventListenersToZoomControllerElements(elements){
+    util.addEvent(elements.slider, "change", function(e){
+        drawingEngine.setZoomLevel(parseFloat(this.value));
+    });
+    util.addEvent(elements.zoomInButton, "click", function(e){
+        drawingEngine.increaseZoomLevel();
+        elements.slider.value = drawingEngine.getDefaultContainerScale();
+    });
+    util.addEvent(elements.zoomOutButton, "click", function(e){
+        drawingEngine.reduceZoomLevel();
+        elements.slider.value = drawingEngine.getDefaultContainerScale();
+    });
+};
+
+function MouseWheelHandler(e){
+    var e = window.event || e; // old IE support
+    zoomController.elements.slider.value = drawingEngine.zoom(
+        e.clientX,
+        e.clientY,
+        Math.max(-1, Math.min(1, (e.wheelDelta || -e.detail))));
 };
 
 if (constructorOptions != undefined) {
             //  (canvasID)
             if (constructorOptions.canvasId != undefined &&
-               constructorOptions.canvasIdWrap != undefined &&
-               constructorOptions.zoom == undefined &&
-               constructorOptions.mapImage == undefined &&
-               constructorOptions.coord == undefined) {
-            layoutService.createCanvas(constructorOptions.canvasId, constructorOptions.canvasIdWrap);
+             constructorOptions.canvasIdWrap != undefined &&
+             constructorOptions.zoom == undefined &&
+             constructorOptions.mapImage == undefined &&
+             constructorOptions.coord == undefined) {
+                layoutService.createCanvas(constructorOptions.canvasId, constructorOptions.canvasIdWrap);
             layoutService.addEventListeners();
         }
             // (canvasID, zoom)
@@ -608,7 +679,7 @@ if (constructorOptions != undefined) {
                 constructorOptions.zoom != undefined &&
                 constructorOptions.mapImage == undefined &&
                 constructorOptions.coord == undefined) {
-            layoutService.createCanvas(constructorOptions.canvasId, constructorOptions.canvasIdWrap);
+                layoutService.createCanvas(constructorOptions.canvasId, constructorOptions.canvasIdWrap);
             layoutService.addEventListeners();
             layoutService.setZoomLevel(constructorOptions.zoom);
         }
@@ -618,7 +689,7 @@ if (constructorOptions != undefined) {
                 constructorOptions.zoom != undefined &&
                 constructorOptions.mapImage != undefined &&
                 constructorOptions.coord == undefined) {
-            layoutService.createCanvas(constructorOptions.canvasId, constructorOptions.canvasIdWrap);
+                layoutService.createCanvas(constructorOptions.canvasId, constructorOptions.canvasIdWrap);
             layoutService.addEventListeners();
             layoutService.createBackgroundImage(constructorOptions.mapImage);
             layoutService.setZoomLevel(constructorOptions.zoom);
@@ -629,7 +700,7 @@ if (constructorOptions != undefined) {
                 constructorOptions.zoom != undefined &&
                 constructorOptions.mapImage == undefined &&
                 constructorOptions.coord != undefined) {
-            layoutService.createCanvas(constructorOptions.canvasId, constructorOptions.canvasIdWrap);
+                layoutService.createCanvas(constructorOptions.canvasId, constructorOptions.canvasIdWrap);
             layoutService.addEventListeners();
             layoutService.getImageByCoords(constructorOptions.coord, constructorOptions.zoom, function(){
 

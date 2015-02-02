@@ -20,6 +20,10 @@ var DrawingEngine = function() {
 	drawingEngine.getDefaultContainerScale = function(){
 		return defaultContainerScale;
 	};
+
+	drawingEngine.setDefaultContainerScale = function(newDefaultContainerScale){
+		defaultContainerScale = newDefaultContainerScale;
+	};
 	
 	drawingEngine.getMinScale = function(){
 		return minScale;
@@ -43,12 +47,23 @@ var DrawingEngine = function() {
     		else if (defaultContainerScale < minScale) defaultContainerScale = minScale
 
 	    // This is the magic. I didn't write this, but it is what allows the zoom to work.
-		defaultContainerZoomOffsetX = defaultContainer.position.x;
-		defaultContainerZoomOffsetY = defaultContainer.position.y;
+		// defaultContainerZoomOffsetX = defaultContainer.position.x;
+		// defaultContainerZoomOffsetY = defaultContainer.position.y;
+
+		defaultContainerZoomOffsetX = (defaultContainerZoomOffsetX - canvasElement.width/2) *
+		(defaultContainerScale / defaultContainerOldScale) + canvasElement.width/2;
+		defaultContainerZoomOffsetY = (defaultContainerZoomOffsetY - canvasElement.height/2) *
+		(defaultContainerScale / defaultContainerOldScale) + canvasElement.height/2;
 
 	    //Set the position and scale of the DisplayObjectContainer
 	    defaultContainer.scale.set(defaultContainerScale, defaultContainerScale);
 	    defaultContainer.position.set(defaultContainerZoomOffsetX, defaultContainerZoomOffsetY);
+	    renderer.render(stage);
+	    if(viewParameters.viewBoundriesSet === true){
+	    	checkIfViewIsInBoundries();
+	    	renderer.render(stage);
+	    }
+	    return defaultContainerScale; 
 	};
 
 	//
@@ -298,6 +313,7 @@ var DrawingEngine = function() {
 
 	        // Move the main layer based on above calucalations
 	        minScale = defaultContainerScale;
+	        maxScale = minScale*10; 
 	        this.centerView();
 	        rendererResize();
 	    }
@@ -321,6 +337,35 @@ var DrawingEngine = function() {
 			}; 
 		}
 	};
+
+	drawingEngine.zoom = function(x, y, direction) {
+
+		var defaultContainerOldScale = defaultContainerScale;
+		var factor = (1 + direction * 0.1);
+		defaultContainerScale *= factor;
+
+		//Check to see that the scale is not outside of the specified bounds
+		if (defaultContainerScale > maxScale){ 
+			defaultContainerScale = maxScale;
+		}else if (defaultContainerScale < minScale){
+			defaultContainerScale = minScale;	
+		}
+
+		defaultContainerZoomOffsetX = (defaultContainerZoomOffsetX - x) *
+		(defaultContainerScale / defaultContainerOldScale) + x;
+		defaultContainerZoomOffsetY = (defaultContainerZoomOffsetY - y) *
+		(defaultContainerScale / defaultContainerOldScale) + y;
+
+	    //Set the position and scale of the DisplayObjectContainer
+	    defaultContainer.scale.set(defaultContainerScale, defaultContainerScale);
+	    defaultContainer.position.set(defaultContainerZoomOffsetX, defaultContainerZoomOffsetY);
+	    renderer.render(stage);
+	    if(viewParameters.viewBoundriesSet === true){
+	    	checkIfViewIsInBoundries();
+	    	renderer.render(stage);
+	    }
+	    return defaultContainerScale; 
+	}
 
 	//
 	// Private Functions
@@ -397,34 +442,6 @@ var DrawingEngine = function() {
 				isMovedHorizontaly = true;
 			};
 		}
-	}
-
-	function zoom(x, y, direction) {
-
-		var defaultContainerOldScale = defaultContainerScale;
-		var factor = (1 + direction * 0.1);
-		defaultContainerScale *= factor;
-
-		//Check to see that the scale is not outside of the specified bounds
-		if (defaultContainerScale > maxScale){ 
-			defaultContainerScale = maxScale;
-		}else if (defaultContainerScale < minScale){
-			defaultContainerScale = minScale;	
-		}
-
-		defaultContainerZoomOffsetX = (defaultContainerZoomOffsetX - x) *
-		(defaultContainerScale / defaultContainerOldScale) + x;
-		defaultContainerZoomOffsetY = (defaultContainerZoomOffsetY - y) *
-		(defaultContainerScale / defaultContainerOldScale) + y;
-
-	    //Set the position and scale of the DisplayObjectContainer
-	    defaultContainer.scale.set(defaultContainerScale, defaultContainerScale);
-	    defaultContainer.position.set(defaultContainerZoomOffsetX, defaultContainerZoomOffsetY);
-	    renderer.render(stage);
-	    if(viewParameters.viewBoundriesSet === true){
-	    	checkIfViewIsInBoundries();
-	    	renderer.render(stage);
-	    }
 	}
 
 		/**

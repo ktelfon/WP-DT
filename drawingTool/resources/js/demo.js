@@ -47,6 +47,8 @@ document.onreadystatechange = function () {
 				});
 			spectrumLD.expandPictureToScreen();
 			spectrumLD.setViewBoundriesToBackgroundImage();
+			spectrumLD.addZoomController();
+			
 		});
 	}
 }
