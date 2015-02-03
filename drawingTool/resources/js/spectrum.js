@@ -48,6 +48,15 @@ var SpectrumLayoutDesigner = function(constructorOptions){
 	spectrumLayoutDesigner.addZoomController = function(){
 		layoutService.addZoomController();	
 	};
+	spectrumLayoutDesigner.hideZoomController = function(){
+		layoutService.hideZoomController();	
+	};
+	spectrumLayoutDesigner.showZoomController = function(){
+		layoutService.showZoomController();	
+	};
+	spectrumLayoutDesigner.removeZoomController = function(){
+		layoutService.removeZoomController();	
+	};
 
 	return spectrumLayoutDesigner;
 };

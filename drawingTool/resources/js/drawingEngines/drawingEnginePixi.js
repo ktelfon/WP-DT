@@ -5,7 +5,7 @@ var DrawingEngine = function() {
 	maxScale = 100, isObjectDragging = false,
 	windowWidth = window.innerWidth,
 	windowHeight = window.innerHeight,
-	canvas = {}, stage = {}, 
+	canvas = {}, stage = {}, scaleStep = 0.3,
 	 //Used to check if mouse is down
 	 mousedown = false, renderer = {},
 	 defaultContainerZoomOffsetX = 0,
@@ -17,6 +17,9 @@ var DrawingEngine = function() {
 	//
 	// getters setters
 	//
+	drawingEngine.getScaleStep = function(){
+		return scaleStep;
+	};
 	drawingEngine.getDefaultContainerScale = function(){
 		return defaultContainerScale;
 	};
@@ -295,10 +298,10 @@ var DrawingEngine = function() {
 	};
 
 	drawingEngine.increaseZoomLevel = function(){
-		this.setZoomLevel(defaultContainerScale + 0.1);
+		this.setZoomLevel(defaultContainerScale + scaleStep);
 	};
 	drawingEngine.reduceZoomLevel = function(){
-		this.setZoomLevel(defaultContainerScale - 0.1);
+		this.setZoomLevel(defaultContainerScale - scaleStep);
 	}; 
 
 	drawingEngine.expandPictureToScreen = function(){

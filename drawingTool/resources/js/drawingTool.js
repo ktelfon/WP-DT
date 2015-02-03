@@ -587,21 +587,19 @@ layoutService.addEventListeners = function(elementId) {
 
 layoutService.addZoomController=function(){
     if(canvasWrapElement != undefined){
-        if(zoomController.showZoomControls){
-            // hide control
-            zoomController.showZoomControls = false;
-        }else{
+        if(!zoomController.showZoomControls && !zoomController.isCreated){
             // show controll
             zoomController.showZoomControls = true;
             zoomController.isCreated = true;
             zoomController.elements = {};
             // creating html elements
             var zoomSliderControllerElement = "<div id='zoomSliderController'></div>",
-            slider = "<input id='zoomSlider' type=range \n\
-            min="+ drawingEngine.getMinScale()+" \n\
-            max="+ drawingEngine.getMaxScale()+" \n\
-            value="+drawingEngine.getDefaultContainerScale()+" \n\
-            step=0.1 orient='vertical'>",
+            slider = "<input id='zoomSlider' type=range data-slider-id='zoomSlider' \n\
+            data-slider-min="+ drawingEngine.getMinScale()+" \n\
+            data-slider-max="+ drawingEngine.getMaxScale()+" \n\
+            data-slider-value="+drawingEngine.getDefaultContainerScale()+" \n\
+            data-slider-step="+ drawingEngine.getScaleStep()+ " \n\
+            data-slider-tooltip='hide' data-slider-orientation='vertical' data-slider-handle='square'>",
             zoomInButton = "<button id='zoomInButton' class='zoomSliderButton'>+</button>",
             zoomOutButton = "<button id='zoomOutButton' class='zoomSliderButton'>-</button>";
 
@@ -612,33 +610,62 @@ layoutService.addZoomController=function(){
             util.appendHtml(zoomController.elements.controllerWrap, zoomInButton);
             util.appendHtml(zoomController.elements.controllerWrap, slider);
             util.appendHtml(zoomController.elements.controllerWrap, zoomOutButton);
+            
+            zoomController.elements.slider = document.getElementById("zoomSlider");
+            zoomController.elements.zoomInButton = document.getElementById("zoomInButton");
+            zoomController.elements.zoomOutButton = document.getElementById("zoomOutButton");
 
-            zoomController.elements = {
-                slider : document.getElementById("zoomSlider"),
-                zoomInButton: document.getElementById("zoomInButton"),
-                zoomOutButton: document.getElementById("zoomOutButton")
-            };
-           
             zoomController.elements.slider.minValue = drawingEngine.getMinScale();
             zoomController.elements.slider.maxValue = drawingEngine.getMaxScale();
             zoomController.elements.slider.currentZoomValue = drawingEngine.getDefaultContainerScale();
 
+            zoomController.elements.sliderObject = new Slider("#zoomSlider", {
+                reversed : true
+            });
+
             setStylesToZoomControllerElements(zoomController.elements);
             addEventListenersToZoomControllerElements(zoomController.elements);
+
         } 
+    }
+};
+
+layoutService.hideZoomController = function(){
+    if(canvasWrapElement != undefined){
+        if(zoomController.showZoomControls){
+            zoomController.showZoomControls = false;
+            zoomController.elements.controllerWrap.style.display = "none";
+        }
+    }
+};
+
+layoutService.showZoomController = function(){
+    if(canvasWrapElement != undefined){
+        if(!zoomController.showZoomControls){
+            zoomController.showZoomControls = true;
+            zoomController.elements.controllerWrap.style.display = "block";
+        }
+    }
+};
+
+layoutService.removeZoomController = function(){
+    if(canvasWrapElement != undefined){
+        if(zoomController.isCreated){
+            zoomController.isCreated = false;
+            zoomController.showZoomControls = false;
+            canvasWrapElement.removeChild(zoomController.elements.controllerWrap);
+        }
     }
 };
 
 function setStylesToZoomControllerElements(elements){
     // setting style to slider element
-    elements.slider.style.top = (canvasWrapElement.offsetTop + (elements.zoomInButton.offsetHeight * 2.5)).toString()+"px"; 
-    elements.slider.style.height = (canvasWrapElement.offsetHeight * 0.65).toString()+"px";
+    elements.controllerWrap.style.top = (canvasWrapElement.offsetTop + (elements.zoomInButton.offsetHeight * 2.5)).toString()+"px"; 
+    // elements.slider.style.height = (canvasWrapElement.offsetHeight * 0.65).toString()+"px";
     // setting style to zoom in button element
-    elements.zoomInButton.style.top = (canvasWrapElement.offsetTop + (elements.zoomInButton.offsetHeight )).toString()+"px";
+    elements.zoomInButton.style.top = (-elements.zoomInButton.offsetHeight*1.5).toString()+"px";
     // setting style to zoom out button element
-    elements.zoomOutButton.style.top = ((elements.slider.offsetTop * 0.65) 
-        + (elements.slider.offsetHeight) 
-        + (elements.zoomInButton.offsetHeight * 2.5)).toString()+"px";
+    elements.zoomOutButton.style.top = (elements.controllerWrap.offsetHeight + elements.zoomInButton.offsetHeight*0.5).toString()+"px";
 }
 
 function addEventListenersToZoomControllerElements(elements){
@@ -647,20 +674,28 @@ function addEventListenersToZoomControllerElements(elements){
     });
     util.addEvent(elements.zoomInButton, "click", function(e){
         drawingEngine.increaseZoomLevel();
-        elements.slider.value = drawingEngine.getDefaultContainerScale();
+        zoomController.elements.sliderObject.setValue(
+            drawingEngine.getDefaultContainerScale());
     });
     util.addEvent(elements.zoomOutButton, "click", function(e){
         drawingEngine.reduceZoomLevel();
-        elements.slider.value = drawingEngine.getDefaultContainerScale();
+        zoomController.elements.sliderObject.setValue(
+            drawingEngine.getDefaultContainerScale());
+    });
+    elements.sliderObject.on("slide",function(e){
+        drawingEngine.setZoomLevel(e);
+    });
+    elements.sliderObject.on("slideStop",function(e){
+        drawingEngine.setZoomLevel(e);
     });
 };
 
 function MouseWheelHandler(e){
     var e = window.event || e; // old IE support
-    zoomController.elements.slider.value = drawingEngine.zoom(
+    zoomController.elements.sliderObject.setValue(drawingEngine.zoom(
         e.clientX,
         e.clientY,
-        Math.max(-1, Math.min(1, (e.wheelDelta || -e.detail))));
+        Math.max(-1, Math.min(1, (e.wheelDelta || -e.detail)))));
 };
 
 if (constructorOptions != undefined) {
