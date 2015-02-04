@@ -508,6 +508,9 @@ layoutService.getAllObjectsByType = function(type) {
 layoutService.setZoomLevel = function(zoomLevel){
     drawingEngine.setZoomLevel(zoomLevel);
 };
+layoutService.drawPolygon = function(style){
+    drawingEngine.drawPolygon(style);
+};
 layoutService.expandPictureToScreen = function(){
     drawingEngine.expandPictureToScreen();  
 };

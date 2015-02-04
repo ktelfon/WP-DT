@@ -57,6 +57,9 @@ var SpectrumLayoutDesigner = function(constructorOptions){
 	spectrumLayoutDesigner.removeZoomController = function(){
 		layoutService.removeZoomController();	
 	};
+	spectrumLayoutDesigner.drawPolygon = function(style){
+		layoutService.drawPolygon(style);	
+	};
 
 	return spectrumLayoutDesigner;
 };

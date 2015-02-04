@@ -10,9 +10,21 @@ var DrawingEngine = function() {
 	 mousedown = false, renderer = {},
 	 defaultContainerZoomOffsetX = 0,
 	 defaultContainerZoomOffsetY = 0,
-	 util = Util(), imageMeterSize = {},
-	 canvasElement = {}, canvasWrapElement = {},
-	 backgroundPicSet = false, viewParameters = {}; 
+	 util = Util(), canvasElement = {},
+	 canvasWrapElement = {},
+	 drawingModesProperties= { 
+	 	mouseDownPoint: {},
+	 	lines: [],
+	 	drawingModeTypes : {
+	 		polygon: false,
+	 		circle: false,
+	 		rect: false
+	 	},
+	 },
+	 backgroundImageProperties = {
+	 	backgroundPicSet : false	
+	 },
+	 viewParameters = {}; 
 
 	//
 	// getters setters
@@ -42,9 +54,9 @@ var DrawingEngine = function() {
 		maxScreenHeight = newMaxScreenHeight;
 	};
 
-    drawingEngine.setZoomLevel = function(zoomLevel){
-    	var defaultContainerOldScale = defaultContainerScale;
-    	defaultContainerScale = zoomLevel;
+	drawingEngine.setZoomLevel = function(zoomLevel){
+		var defaultContainerOldScale = defaultContainerScale;
+		defaultContainerScale = zoomLevel;
     	//Check to see that the scale is not outside of the specified bounds
     	if (defaultContainerScale > maxScale) defaultContainerScale = maxScale
     		else if (defaultContainerScale < minScale) defaultContainerScale = minScale
@@ -117,6 +129,16 @@ var DrawingEngine = function() {
 	        clientX = -1;
 	        clientY = -1;
 	        mousedown = true;
+	        
+	        if(drawingModesProperties.drawingModeTypes.polygon === true){
+
+	        }
+	        if(drawingModesProperties.drawingModeTypes.circle === true){
+
+	        }
+	        if(drawingModesProperties.drawingModeTypes.rect === true){
+
+	        }	
 	    };
 
 	    stage.mouseup = function(interactionData){
@@ -125,61 +147,17 @@ var DrawingEngine = function() {
 
 	    stage.mousemove = function(interactionData){
 	    	var e = interactionData.originalEvent;	    	
-	        // Check if the mouse button is down to activate panning
-	        if(mousedown && !isObjectDragging) {
-	            // If this is the first iteration through then set clientX and clientY to match the inital mouse position
-	            if(clientX == -1 && clientY == -1) {
-	            	clientX = e.clientX;
-	            	clientY = e.clientY;
-	            }
-
-	            // Run a relative check of the last two mouse positions to detect which direction to pan on x
-	            if(e.clientX == clientX) {
-	            	xPos = 0;
-	            } else if(e.clientX < clientX == true) {
-	            	// left(mouse direction)
-	            	xPos = -Math.abs(e.clientX - clientX);
-	            } else if(e.clientX > clientX == true) {
-	            	// right(mouse direction)
-	            	xPos = Math.abs(e.clientX - clientX);
-	            }
-
-	            // Run a relative check of the last two mouse positions to detect which direction to pan on y
-	            if(e.clientY == clientY) {
-	            	yPos = 0;
-	            } else if(e.clientY < clientY == true) {
-	            	// top(mouse direction)
-	            	yPos = -Math.abs(e.clientY - clientY);
-	            } else if(e.clientY > clientY == true) {
-	            	// bottom(mouse direction)
-	            	yPos = Math.abs(clientY - e.clientY);
-	            }
-
-	            // Set the relative positions for comparison in the next frame
-	            clientX = e.clientX;
-	            clientY = e.clientY;
-
-	            // Change the main layer zoom offset x and y for use when mouse wheel listeners are fired.
-	            var defaultContainerZoomOffsetXBeforeMoving = util.copy(defaultContainerZoomOffsetX),
-	            defaultContainerZoomOffsetYBeforeMoving = util.copy(defaultContainerZoomOffsetY);
-
-	            defaultContainerZoomOffsetX = defaultContainer.position.x + xPos;
-	            defaultContainerZoomOffsetY = defaultContainer.position.y + yPos;
-	            var positionBeforeMoving = util.copy(defaultContainer.position);
-	            // Move the main layer based on above calucalations
-	            defaultContainer.position.set(defaultContainerZoomOffsetX, defaultContainerZoomOffsetY);
-
-	            //check if background pictures is in boundries 
-	            if(viewParameters.viewBoundriesSet === true){
-			    	checkIfViewIsInBoundries();
-			    }
-	        }
+	    	panCanvas(e);
 	    };
 
-	    window.addEventListener("resize", function () {
+	    util.addEvent(window, "resize", function () {
 	    	drawingEngine.centerView();
 	    	drawingEngine.setViewBoundriesToBackgroundImage();
 	    });
+
+	    util.addEvent(canvasElement,"mouseout",function(){
+	    	mousedown = false;
+	    }); 
 
 	    var resize = function () {
 	    	window.addEventListener('resize', rendererResize);
@@ -190,7 +168,7 @@ var DrawingEngine = function() {
 	};
 
 	drawingEngine.createBackgroundImage = function(satelliteImage){
-		if(backgroundPicSet === true){
+		if(backgroundImageProperties.backgroundPicSet === true){
 			for(var i = 0; i < defaultContainer.children.length; i++){
 				if(defaultContainer.children[i].isBgImage === true){
 					defaultContainer.removeChild(defaultContainer.children[i]);
@@ -198,7 +176,7 @@ var DrawingEngine = function() {
 			}
 		};
 
-		imageMeterSize = {
+		backgroundImageProperties.imageMeterSize = {
 			width: satelliteImage.metricWidth,
 			height: satelliteImage.metricHeight
 		};
@@ -211,7 +189,8 @@ var DrawingEngine = function() {
 		bgImage.position.y = 0;
 		bgImage.width = 1280;
 		bgImage.height = 1280;
-		bgImage.isBgImage = backgroundPicSet = true;
+		bgImage.isBgImage = backgroundImageProperties.backgroundPicSet = true;
+		backgroundImageProperties.backgroundImageObject = bgImage;
 		return bgImage;
 		
 	};
@@ -231,21 +210,24 @@ var DrawingEngine = function() {
 
 	/*
 		Create objects and adds listeners to them
-	*/
-	drawingEngine.createObject = function(canvas, points, style){
+		*/
+		drawingEngine.createObject = function(canvas, points, style){
 		// set a fill and line style
+
+		points = fromMetersToPixels(points);
+
 		var shape = new PIXI.Graphics();
 		shape.beginFill(style.fill, style.opacity);
 		shape.lineStyle(style.lineWidth, style.lineColor, 1);
 		
 		// draw a shape
 		shape.moveTo(points[0].x, points[0].y);
-		for(var i = 0; i < points.length; i++){
+		for(var i = 1; i < points.length; i++){
 			shape.lineTo(points[i].x, points[i].y);
 		}
 		shape.endFill();
 		shape.scale.set(1, 1);
-	
+
 		shape.buttonMode = true;
 		shape.interactive = true;
 		shape.renderable = true;
@@ -287,32 +269,32 @@ var DrawingEngine = function() {
         return shape;
     };
 
-	drawingEngine.centerView = function(){
-		var centerOffsetX = (defaultContainer.width - canvasElement.width) / 2,
-		centerOffsetY = (defaultContainer.height - canvasElement.height) / 2;
-		
-		defaultContainer.position.set(-centerOffsetX, -centerOffsetY);
-		defaultContainerZoomOffsetX = defaultContainer.position.x;
-		defaultContainerZoomOffsetY = defaultContainer.position.y;
-		renderer.render(stage);
-	};
+    drawingEngine.centerView = function(){
+    	var centerOffsetX = (defaultContainer.width - canvasElement.width) / 2,
+    	centerOffsetY = (defaultContainer.height - canvasElement.height) / 2;
 
-	drawingEngine.increaseZoomLevel = function(){
-		this.setZoomLevel(defaultContainerScale + scaleStep);
-	};
-	drawingEngine.reduceZoomLevel = function(){
-		this.setZoomLevel(defaultContainerScale - scaleStep);
-	}; 
+    	defaultContainer.position.set(-centerOffsetX, -centerOffsetY);
+    	defaultContainerZoomOffsetX = defaultContainer.position.x;
+    	defaultContainerZoomOffsetY = defaultContainer.position.y;
+    	renderer.render(stage);
+    };
 
-	drawingEngine.expandPictureToScreen = function(){
-		if(backgroundPicSet === true){
-			this.centerView();
-			while(defaultContainer.width < maxScreenWidth || defaultContainer.height < maxScreenHeight){
-				defaultContainerScale *= 1.1;
-				this.setZoomLevel(defaultContainerScale);
-			}
-			defaultContainerZoomOffsetX = defaultContainer.position.x ;
-			defaultContainerZoomOffsetY = defaultContainer.position.y ;
+    drawingEngine.increaseZoomLevel = function(){
+    	this.setZoomLevel(defaultContainerScale + scaleStep);
+    };
+    drawingEngine.reduceZoomLevel = function(){
+    	this.setZoomLevel(defaultContainerScale - scaleStep);
+    }; 
+
+    drawingEngine.expandPictureToScreen = function(){
+    	if(backgroundImageProperties.backgroundPicSet === true){
+    		this.centerView();
+    		while(defaultContainer.width < maxScreenWidth || defaultContainer.height < maxScreenHeight){
+    			defaultContainerScale *= 1.1;
+    			this.setZoomLevel(defaultContainerScale);
+    		}
+    		defaultContainerZoomOffsetX = defaultContainer.position.x ;
+    		defaultContainerZoomOffsetY = defaultContainer.position.y ;
 
 	        // Move the main layer based on above calucalations
 	        minScale = defaultContainerScale;
@@ -324,7 +306,7 @@ var DrawingEngine = function() {
 
 	// 
 	drawingEngine.setViewBoundriesToBackgroundImage = function(){
-		if(backgroundPicSet === true){
+		if(backgroundImageProperties.backgroundPicSet === true){
 			viewParameters.viewBoundriesSet = true;
 
 			// return to starting position
@@ -338,6 +320,7 @@ var DrawingEngine = function() {
 				x: defaultContainer.width + Math.abs(defaultContainer.position.x) * 2 ,
 				y: defaultContainer.height + Math.abs(defaultContainer.position.y) * 2
 			}; 
+			renderer.render(stage);
 		}
 	};
 
@@ -370,37 +353,42 @@ var DrawingEngine = function() {
 	    return defaultContainerScale; 
 	}
 
+	drawingEngine.drawPolygon = function(style){
+		drawingModesProperties.style = style;
+		drawingModesProperties.drawingModeTypes.polygon = true;
+	};
+
 	//
 	// Private Functions
 	//
 
 	/**
 		Transforms from meters to pixels
-	*/
+		*/
 
-	function fromMetersToPixels(meterPoints){
-		var pixelPoints = [],
-		coefWidth = imageMeterSize.width,
-		coefHeight = imageMeterSize.height;
-		for(var i = 0; i < meterPoints.length; i++){
-			pixelPoints.push({x: meterPoints[i].x  * coef,y: meterPoints[i].y * coef});
+		function fromMetersToPixels(meterPoints){
+			var pixelPoints = [],
+			coefWidth = backgroundImageProperties.backgroundImageObject.width / backgroundImageProperties.imageMeterSize.width,
+			coefHeight = backgroundImageProperties.backgroundImageObject.height / backgroundImageProperties.imageMeterSize.height;
+			for(var i = 0; i < meterPoints.length; i++){
+				pixelPoints.push({x: meterPoints[i].x  * coefWidth,y: meterPoints[i].y * coefHeight});
+			}
+			return pixelPoints;
 		}
-		return pixelPoints;
-	}
 
 	/**
 		Transforms from pixels to meters
-	*/
+		*/
 
-	function fromPixelsTometers(pixelPoints){
-		var meterPoints = [],
-		coefWidth = imageMeterSize.width,
-		coefHeight = imageMeterSize.height;
-		for(var i = 0; i < pixelPoints.length; i++){
-			meterPoints.push({x: pixelPoints[i].x  * coef,y: pixelPoints[i].y * coef});
+		function fromPixelsTometers(pixelPoints){
+			var meterPoints = [],
+			coefWidth = backgroundImageProperties.imageMeterSize.width / backgroundImageProperties.backgroundImageObject.width,
+			coefHeight = backgroundImageProperties.imageMeterSize.height / backgroundImageProperties.backgroundImageObject.height;
+			for(var i = 0; i < pixelPoints.length; i++){
+				meterPoints.push({x: pixelPoints[i].x  * coefWidth,y: pixelPoints[i].y * coefHeight});
+			}
+			return meterPoints;
 		}
-		return meterPoints;
-	}
 
 	/*
 	Check if view is in boundries and changes the value of allowedPanDirections
@@ -450,18 +438,18 @@ var DrawingEngine = function() {
 		/**
 		 * Calculate the current window size and set the canvas renderer size accordingly
 		 */
-	var rendererResize = function () {
-		var width = window.innerWidth,
-		height = window.innerHeight,
-		targetScale;
+		 var rendererResize = function () {
+		 	var width = window.innerWidth,
+		 	height = window.innerHeight,
+		 	targetScale;
 
 			 /**
 			 * Calculate the current window size and set the canvas renderer size accordingly
 			 */
-		canvasElement.width = width * window.devicePixelRatio;
-		canvasElement.height = height * window.devicePixelRatio;
-		canvasElement.style.width = width + 'px';
-		canvasElement.style.height = height + 'px';
+			 canvasElement.width = width * window.devicePixelRatio;
+			 canvasElement.height = height * window.devicePixelRatio;
+			 canvasElement.style.width = width + 'px';
+			 canvasElement.style.height = height + 'px';
 
 			    // defaultContainer._width = canvasElement.width; 
 			    // defaultContainer._height = canvasElement.height; 
@@ -470,15 +458,75 @@ var DrawingEngine = function() {
 			     * Let PIXI know that we changed the size of the viewport
 			     */
 
-		renderer.resize(canvasElement.width, canvasElement.height);
+			     renderer.resize(canvasElement.width, canvasElement.height);
 
-		drawingEngine.setViewBoundriesToBackgroundImage();
+			     drawingEngine.setViewBoundriesToBackgroundImage();
+			     renderer.render(stage);
+			 };
+
+			 function isDrawingModeOn(){
+			 	for(var val in drawingModesProperties.drawingModeTypes){
+			 		if(drawingModesProperties.drawingModeTypes[val] === true)
+			 			return true;
+			 	}
+			 }
+
+			 function panCanvas(e){
+			 	// Check if the mouse button is down to activate panning
+			 	if(mousedown && !isObjectDragging) {
+	            // If this is the first iteration through then set clientX and clientY to match the inital mouse position
+	            if(clientX == -1 && clientY == -1) {
+	            	clientX = e.clientX;
+	            	clientY = e.clientY;
+	            }
+
+	            // Run a relative check of the last two mouse positions to detect which direction to pan on x
+	            if(e.clientX == clientX) {
+	            	xPos = 0;
+	            } else if(e.clientX < clientX == true) {
+	            	// left(mouse direction)
+	            	xPos = -Math.abs(e.clientX - clientX);
+	            } else if(e.clientX > clientX == true) {
+	            	// right(mouse direction)
+	            	xPos = Math.abs(e.clientX - clientX);
+	            }
+
+	            // Run a relative check of the last two mouse positions to detect which direction to pan on y
+	            if(e.clientY == clientY) {
+	            	yPos = 0;
+	            } else if(e.clientY < clientY == true) {
+	            	// top(mouse direction)
+	            	yPos = -Math.abs(e.clientY - clientY);
+	            } else if(e.clientY > clientY == true) {
+	            	// bottom(mouse direction)
+	            	yPos = Math.abs(clientY - e.clientY);
+	            }
+
+	            // Set the relative positions for comparison in the next frame
+	            clientX = e.clientX;
+	            clientY = e.clientY;
+
+	            // Change the main layer zoom offset x and y for use when mouse wheel listeners are fired.
+	            var defaultContainerZoomOffsetXBeforeMoving = util.copy(defaultContainerZoomOffsetX),
+	            defaultContainerZoomOffsetYBeforeMoving = util.copy(defaultContainerZoomOffsetY);
+
+	            defaultContainerZoomOffsetX = defaultContainer.position.x + xPos;
+	            defaultContainerZoomOffsetY = defaultContainer.position.y + yPos;
+	            var positionBeforeMoving = util.copy(defaultContainer.position);
+	            // Move the main layer based on above calucalations
+	            defaultContainer.position.set(defaultContainerZoomOffsetX, defaultContainerZoomOffsetY);
+
+	            //check if background pictures is in boundries 
+	            if(viewParameters.viewBoundriesSet === true){
+	            	checkIfViewIsInBoundries();
+	            }
+	        }
+	    }
+
+	    function animate() {
+	    	requestAnimFrame( animate );
+	    	renderer.render(stage);
+	    }
+
+	    return drawingEngine;
 	};
-
-	function animate() {
-	 	requestAnimFrame( animate );
-	 	renderer.render(stage);
-	}
-
-	return drawingEngine;
-};
