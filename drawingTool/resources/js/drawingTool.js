@@ -500,7 +500,7 @@ layoutService.getAllObjectsByType = function(type) {
     }*/
     options.layer = options.layer != undefined ? options.layer : "default"; 
     options.group = options.group != undefined ? options.group : "default"; 
-    var object = drawingEngine.createObject(canvas, points, options.style);
+    var object = drawingEngine.createObject(canvas, points, options.style, false);
     // layers[options.layer].push(object);
     // groups[options.group].push(object);
     this.addObjectToCanvas(object);

@@ -58,7 +58,7 @@ document.onreadystatechange = function () {
 						opacity: 1,
 						lineStyle: {}
 					}
-				});
+				});			
 			spectrumLD.expandPictureToScreen();
 			spectrumLD.setViewBoundriesToBackgroundImage();
 			spectrumLD.addZoomController();

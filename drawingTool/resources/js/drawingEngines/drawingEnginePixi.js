@@ -12,9 +12,13 @@ var DrawingEngine = function() {
 	 defaultContainerZoomOffsetY = 0,
 	 util = Util(), canvasElement = {},
 	 canvasWrapElement = {},
-	 drawingModesProperties= { 
-	 	mouseDownPoint: {},
+	 defaultSnapPointRadius = 0.2,
+	 drawingModesProperties = { 
+	 	snapPointRadius: defaultSnapPointRadius,
+	 	mouseDownPoint: undefined,
+	 	mouseFollowPoint: undefined,
 	 	lines: [],
+	 	points: [],
 	 	drawingModeTypes : {
 	 		polygon: false,
 	 		circle: false,
@@ -95,6 +99,8 @@ var DrawingEngine = function() {
 	 	canvasElement = document.getElementById(elementId);
 	 	canvasWrapElement = document.getElementById(elementWrap);
 
+	 	canvasElement.style.cursor = 'crosshair';
+
 	 	stage = new PIXI.Stage(0xFFFFFF);
 	 	defaultContainer = new PIXI.DisplayObjectContainer();
 
@@ -125,63 +131,113 @@ var DrawingEngine = function() {
 	drawingEngine.addEventListeners = function(elementId){
 
 		stage.mousedown = function(interactionData){
-	        //Reset clientX and clientY to be used for relative location base panning
-	        clientX = -1;
-	        clientY = -1;
-	        mousedown = true;
-	        
-	        if(drawingModesProperties.drawingModeTypes.polygon === true){
+			clientX = -1;
+			clientY = -1;
+			mousedown = true;
 
-	        }
-	        if(drawingModesProperties.drawingModeTypes.circle === true){
+			if(drawingModesProperties.drawingModeTypes.polygon === true){
+				drawingModesProperties.mouseDownPoint = {
+					x: (interactionData.originalEvent.clientX - defaultContainerZoomOffsetX) / defaultContainerScale,
+					y: (interactionData.originalEvent.clientY - defaultContainerZoomOffsetY) / defaultContainerScale
+				};
+				drawingModesProperties.points.push(util.copy(drawingModesProperties.mouseDownPoint));
 
-	        }
-	        if(drawingModesProperties.drawingModeTypes.rect === true){
+				if(drawingModesProperties.points.length > 1){
+					var line = createPolygon(
+						[drawingModesProperties.points.length - 2, drawingModesProperties.mouseFollowPoint],
+						drawingModesProperties.style.style); 
+					drawingModesProperties.lines.push(line);
 
-	        }	
-	    };
-
-	    stage.mouseup = function(interactionData){
-	    	mousedown = false;
-	    };
-
-	    stage.mousemove = function(interactionData){
-	    	var e = interactionData.originalEvent;	    	
-	    	panCanvas(e);
-	    };
-
-	    util.addEvent(window, "resize", function () {
-	    	drawingEngine.centerView();
-	    	drawingEngine.setViewBoundriesToBackgroundImage();
-	    });
-
-	    util.addEvent(canvasElement,"mouseout",function(){
-	    	mousedown = false;
-	    }); 
-
-	    var resize = function () {
-	    	window.addEventListener('resize', rendererResize);
-	    	window.addEventListener('deviceOrientation', rendererResize);
-	    };
-
-	    resize();
-	};
-
-	drawingEngine.createBackgroundImage = function(satelliteImage){
-		if(backgroundImageProperties.backgroundPicSet === true){
-			for(var i = 0; i < defaultContainer.children.length; i++){
-				if(defaultContainer.children[i].isBgImage === true){
-					defaultContainer.removeChild(defaultContainer.children[i]);
+					if(pointsDistance(
+						fromPixelsTometers([drawingModesProperties.points[0]])[0],
+						fromPixelsTometers([drawingModesProperties.points[drawingModesProperties.points.length - 1]])[0]) < drawingModesProperties.snapPointRadius){
+						stopDrawingPolygon();
 				}
 			}
-		};
+		}
+		if(drawingModesProperties.drawingModeTypes.circle === true){
 
-		backgroundImageProperties.imageMeterSize = {
-			width: satelliteImage.metricWidth,
-			height: satelliteImage.metricHeight
-		};
+		}
+		if(drawingModesProperties.drawingModeTypes.rect === true){
 
-		var texture = PIXI.Texture.fromImage(satelliteImage.link, true);
+		}	
+	};
+
+	stage.mouseup = function(interactionData){
+		mousedown = false;
+	};
+
+	stage.mousemove = function(interactionData){
+		var e = interactionData.originalEvent;
+
+		drawingModesProperties.mouseFollowPoint = {
+			x: (interactionData.originalEvent.clientX - defaultContainerZoomOffsetX) / defaultContainerScale ,
+			y: (interactionData.originalEvent.clientY - defaultContainerZoomOffsetY) / defaultContainerScale
+		};   	
+
+		if(mousedown && !isObjectDragging && !isDrawingModeOn()) {
+			panCanvas(e);
+		}
+		if(drawingModesProperties.drawingModeTypes.polygon === true){
+			lineFollowMouse();
+			if(drawingModesProperties.points.length > 1){
+				if(pointsDistance(
+					fromPixelsTometers([drawingModesProperties.points[0]])[0],
+					fromPixelsTometers([drawingModesProperties.mouseFollowPoint])[0]) < drawingModesProperties.snapPointRadius){
+					canvasElement.style.cursor = 'pointer';
+			}else{
+				canvasElement.style.cursor = 'crosshair';
+			}
+		}
+	}
+	if(drawingModesProperties.drawingModeTypes.circle === true){
+		circleFollowMouse(e);
+	}
+	if(drawingModesProperties.drawingModeTypes.rect === true){
+		rectFollowMouse(e);
+	}
+
+};
+
+canvasElement.oncontextmenu = function() {
+	if(drawingModesProperties.drawingModeTypes.polygon){
+		stopDrawingPolygon();
+	}  
+	return false;
+}
+
+util.addEvent(window, "resize", function () {
+	drawingEngine.centerView();
+	drawingEngine.setViewBoundriesToBackgroundImage();
+});
+
+util.addEvent(canvasElement,"mouseout",function(){
+	mousedown = false;
+}); 
+
+var resize = function () {
+	window.addEventListener('resize', rendererResize);
+	window.addEventListener('deviceOrientation', rendererResize);
+};
+
+resize();
+};
+
+drawingEngine.createBackgroundImage = function(satelliteImage){
+	if(backgroundImageProperties.backgroundPicSet === true){
+		for(var i = 0; i < defaultContainer.children.length; i++){
+			if(defaultContainer.children[i].isBgImage === true){
+				defaultContainer.removeChild(defaultContainer.children[i]);
+			}
+		}
+	};
+
+	backgroundImageProperties.imageMeterSize = {
+		width: satelliteImage.metricWidth,
+		height: satelliteImage.metricHeight
+	};
+
+	var texture = PIXI.Texture.fromImage(satelliteImage.link, true);
 		// create a new Sprite using the texture
 		var bgImage = new PIXI.Sprite(texture);
 		// Sets pic in the top left corner
@@ -211,22 +267,14 @@ var DrawingEngine = function() {
 	/*
 		Create objects and adds listeners to them
 		*/
-		drawingEngine.createObject = function(canvas, points, style){
+		drawingEngine.createObject = function(canvas, points, style, isTransformed){
 		// set a fill and line style
 
-		points = fromMetersToPixels(points);
-
-		var shape = new PIXI.Graphics();
-		shape.beginFill(style.fill, style.opacity);
-		shape.lineStyle(style.lineWidth, style.lineColor, 1);
-		
-		// draw a shape
-		shape.moveTo(points[0].x, points[0].y);
-		for(var i = 1; i < points.length; i++){
-			shape.lineTo(points[i].x, points[i].y);
+		if(isTransformed === false){
+			points = fromMetersToPixels(points);
 		}
-		shape.endFill();
-		shape.scale.set(1, 1);
+
+		var shape = createPolygon(points, style);
 
 		shape.buttonMode = true;
 		shape.interactive = true;
@@ -354,8 +402,12 @@ var DrawingEngine = function() {
 	}
 
 	drawingEngine.drawPolygon = function(style){
-		drawingModesProperties.style = style;
-		drawingModesProperties.drawingModeTypes.polygon = true;
+		if(drawingModesProperties.drawingModeTypes.polygon){
+			stopDrawingPolygon();
+		}else{
+			drawingModesProperties.drawingModeTypes.polygon = true;
+			drawingModesProperties.style = style;
+		}		
 	};
 
 	//
@@ -469,11 +521,26 @@ var DrawingEngine = function() {
 			 		if(drawingModesProperties.drawingModeTypes[val] === true)
 			 			return true;
 			 	}
+			 	return false;
 			 }
 
-			 function panCanvas(e){
+			 function createPolygon(points, style){
+			 	var shape = new PIXI.Graphics();
+			 	shape.beginFill(style.fill, style.opacity);
+			 	shape.lineStyle(style.lineWidth, style.lineColor, 1);
+
+				// draw a shape
+				shape.moveTo(points[0].x, points[0].y);
+				for(var i = 1; i < points.length; i++){
+					shape.lineTo(points[i].x, points[i].y);
+				}
+				shape.endFill();
+				shape.scale.set(1, 1);
+				return shape;
+			}
+
+			function panCanvas(e){
 			 	// Check if the mouse button is down to activate panning
-			 	if(mousedown && !isObjectDragging) {
 	            // If this is the first iteration through then set clientX and clientY to match the inital mouse position
 	            if(clientX == -1 && clientY == -1) {
 	            	clientX = e.clientX;
@@ -521,12 +588,75 @@ var DrawingEngine = function() {
 	            	checkIfViewIsInBoundries();
 	            }
 	        }
-	    }
 
-	    function animate() {
-	    	requestAnimFrame( animate );
-	    	renderer.render(stage);
-	    }
+	        function lineFollowMouse(e){
+	        	if(drawingModesProperties.mouseDownPoint != undefined){
+	        		if(drawingModesProperties.lines.length > 0){
+	        			drawingModesProperties.lines[drawingModesProperties.lines.length - 1].clear();
+	        			stage.removeChild(drawingModesProperties.lines[drawingModesProperties.lines.length - 1]);
+	        			drawingModesProperties.lines.pop();
+	        		}
+	        		if(drawingModesProperties.points > 0){
+	        			var points = [drawingModesProperties.mouseDownPoint, drawingModesProperties.mouseFollowPoint];
+	        		}else{
+	        			var points = [drawingModesProperties.points[drawingModesProperties.points.length-1], drawingModesProperties.mouseFollowPoint];
+	        		}
+	        		
+	        		var line = createPolygon(
+	        			points,
+	        			drawingModesProperties.style.style); 
+	        		drawingModesProperties.lines.push(line);	
+	        		drawingEngine.addObjectToCanvas(canvas, line);
+	        		renderer.render(stage);
+	        	}
+	        };
+	        function stopDrawingPolygon(){
+	        	drawingModesProperties.drawingModeTypes.polygon = false;
+	        	var newShape = drawingEngine.createObject(
+	        		canvas,
+	        		drawingModesProperties.points,
+	        		drawingModesProperties.style.style,
+	        		true
+	        		);
+	        	drawingEngine.addObjectToCanvas(canvas, newShape);
+	        	// clean drawingModesProperties
+	        	for(var i = 0; i < drawingModesProperties.lines.length; i++){
+	        		drawingModesProperties.lines[i].clear();
+	        	}
+	        	drawingModesProperties = { 
+	        		snapPointRadius: defaultSnapPointRadius,
+	        		mouseDownPoint: undefined,
+	        		mouseFollowPoint: undefined,
+	        		lines: [],
+	        		points: [],
+	        		drawingModeTypes : {
+	        			polygon: false,
+	        			circle: false,
+	        			rect: false
+	        		},
+	        	};
+	        };
+	        function circleFollowMouse(e){
 
-	    return drawingEngine;
-	};
+	        };
+	        function rectFollowMouse(e){
+
+	        };
+
+	        function pointsDistance(point1, point2){
+	        	var xs = 0;
+	        	var ys = 0;
+	        	xs = point2.x - point1.x;
+	        	xs = xs * xs;
+	        	ys = point2.y - point1.y;
+	        	ys = ys * ys;
+	        	return Math.sqrt(xs + ys);
+	        }
+
+	        function animate() {
+	        	requestAnimFrame( animate );
+	        	renderer.render(stage);
+	        }
+
+	        return drawingEngine;
+	    };
