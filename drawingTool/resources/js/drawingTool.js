@@ -5,6 +5,7 @@ var LayoutService = function(constructorOptions) {
     // groups = new Map(),
     // layers = new Map(),
     layoutService = {},
+    geometryUtils = new GeometryUtils(),
     inter = new Intersection(),
     drawingEngine = DrawingEngine(),
     googleImageProvider = GoogleImageProvider(),
@@ -33,16 +34,6 @@ var LayoutService = function(constructorOptions) {
 
     // groups[group.type] = group.objects;
     // layers[layer.type] = layer.objects;
-
-    function calculatePolygonArea(X, Y, numPoints) {
-        var area = 0;
-        var j = numPoints - 1;
-        for (var i = 0; i < numPoints; i++) {
-            area = area + (X[j] + X[i]) * (Y[j] - Y[i]);
-            j = i;
-        }
-        return area / 2;
-    }
 
     function isPointInPoly(poly, pt) {
         for (var c = false, i = -1, l = poly.length, j = l - 1; ++i < l; j = i)
@@ -247,91 +238,79 @@ layoutService.getCanvasSize = function() {
     return drawingEngine.getCanvasSize(canvas);
 };
 layoutService.getAllObjectsByType = function(type) {
-            // gets all objects that have the same value in paramter "type" as input values type
-            return drawingEngine.getAllObjectsByType(canvas, type);
-        };
+    return drawingEngine.getAllObjectsByType(canvas, type);
+};
 
-        layoutService.checkIfPolygonisClockwise = function(points) {
-            var area = 0;
-            for (var i = 0; i < points.length; i++) {
-                j = (i + 1) % points.length;
-                area += points[i].x * points[j].y;
-                area -= points[j].x * points[i].y;
+layoutService.checkIfPolygonisClockwise = function(points) {
+    return geometryUtils.checkIfPolygonisClockwise(points);
+};
+
+layoutService.pointsDistance = function(point1, point2) {
+    return geometryUtils.pointsDistance(point1, point2);
+};
+
+layoutService.calculatePolygonArea = function(points) {
+    return geometryUtils.calculatePolygonArea(points);
+};
+
+layoutService.bringToFront = function(object) {
+    drawingEngine.bringToFront(object);
+};
+
+layoutService.getRectObjectCoords = function(module) {
+    return drawingEngine.getRectObjectCoords(module);
+};
+
+layoutService.setWidthHeight = function(isPortrait, type, tilt) {
+    var width, height;
+    if (isPortrait) {
+        width = type.width;
+        height = type.height * Math.cos(tilt * (Math.PI / 180));
+    } else {
+        width = type.height;
+        height = type.width * Math.cos(tilt * (Math.PI / 180));
+    }
+    return {
+        width: width,
+        height: height
+    };
+};
+
+layoutService.checkIfObjectCanBePlacedInside = function(whereToPlace/*array of points*/, whatToPlace/*array of points*/) {
+    return checkIfObjectCanBePlacedInside(whereToPlace, whatToPlace);
+};
+
+layoutService.checkIfObjectIntersectsAnyObject = function(whatToCheck , whatToPlace) {
+    for (var j = 0; j < whatToCheck.length; j++) {
+        for (var z = 0; z < whatToCheck[j].setbackPoints.length; z++) {
+            if (isPointInPoly(whatToPlace, whatToCheck[j].setbackPoints[z])) {
+                return true;
             }
-            return area / 2;
-        };
-        layoutService.pointsDistance = function(point1, point2) {
-            var xs = 0;
-            var ys = 0;
-            xs = point2.x - point1.x;
-            xs = xs * xs;
-            ys = point2.y - point1.y;
-            ys = ys * ys;
-            return Math.sqrt(xs + ys);
-        };
-        layoutService.calculatePolygonArea = function(points) {
-            var X = [];
-            var Y = [];
-            for (var j = 0; j < points.length; j++) {
-                X.push(points[j].x);
-                Y.push(points[j].y);
-            }
-            return Math.abs(calculatePolygonArea(X, Y, points.length));
-        };
-        layoutService.bringToFront = function(object) {
-            drawingEngine.bringToFront(object);
-        };
-        layoutService.getRectObjectCoords = function(module) {
-            return drawingEngine.getRectObjectCoords(module);
-        };
-        layoutService.setWidthHeight = function(isPortrait, type, tilt) {
-            var width, height;
-            if (isPortrait) {
-                width = type.width;
-                height = type.height * Math.cos(tilt * (Math.PI / 180));
-            } else {
-                width = type.height;
-                height = type.width * Math.cos(tilt * (Math.PI / 180));
-            }
-            return {
-                width: width,
-                height: height
-            };
-        };
-        layoutService.checkIfObjectCanBePlacedInside = function(whereToPlace/*array of points*/, whatToPlace/*array of points*/) {
-            return checkIfObjectCanBePlacedInside(whereToPlace, whatToPlace);
-        };
-        layoutService.checkIfObjectIntersectsAnyObject = function(whatToCheck /* array of point arrays */, whatToPlace/* array of points */) {
-            for (var j = 0; j < whatToCheck.length; j++) {
-                for (var z = 0; z < whatToCheck[j].setbackPoints.length; z++) {
-                    if (isPointInPoly(whatToPlace, whatToCheck[j].setbackPoints[z])) {
-                        return true;
-                    }
-                    for (var i = 0; i < whatToPlace.length; i++) {
-                        if (isPointInPoly(whatToCheck[j].setbackPoints, whatToPlace[i])) {
-                            return true;
-                        }
-                    }
-                }
-                if (inter.constructor.intersectPolygonPolygon(
-                    whatToCheck[j].setbackPoints,
-                    whatToPlace
-                    ).status === "Intersection") {
+            for (var i = 0; i < whatToPlace.length; i++) {
+                if (isPointInPoly(whatToCheck[j].setbackPoints, whatToPlace[i])) {
                     return true;
+                }
             }
         }
-        return false;
-    };
-    layoutService.checkForRectObjectIntersections = function(whatToCheck /* array of Rect objects */, whatToPlace/* RectObject */) {
-        return checkForRectObjectIntersections(whatToCheck, whatToPlace);
-    };
-    layoutService.isPointInPoly = function(poly, pt) {
-        return isPointInPoly(poly, pt);
-    };
-    layoutService.getMouseCoords = function(canvas, canvasOffset, scale, e) {
-        return drawingEngine.getMouseCoords(canvas, canvasOffset, scale, e);
-    };
-    layoutService.mouseOverCell = function(e, canvasOffset, scale, canvas, selectedRoof) {
+        if (inter.constructor.intersectPolygonPolygon(
+            whatToCheck[j].setbackPoints,
+            whatToPlace
+            ).status === "Intersection") {
+            return true;
+    }
+}
+return false;
+};
+layoutService.checkForRectObjectIntersections = function(whatToCheck /* array of Rect objects */, whatToPlace/* RectObject */) {
+    return checkForRectObjectIntersections(whatToCheck, whatToPlace);
+};
+layoutService.isPointInPoly = function(poly, pt) {
+    return isPointInPoly(poly, pt);
+};
+layoutService.getMouseCoords = function(canvas, canvasOffset, scale, e) {
+    return drawingEngine.getMouseCoords(canvas, canvasOffset, scale, e);
+};
+layoutService.mouseOverCell = function(e, canvasOffset, scale, canvas, selectedRoof) {
             //check if grid i active
             if (selectedRoof.gridLayout !== undefined) {
                 //convert points to canvas transformed point
@@ -477,30 +456,27 @@ layoutService.getAllObjectsByType = function(type) {
         layoutService.getImageFromCanvas = function(canvas) {
             drawingEngine.getImageFromCanvas(canvas);
         };
+        // remove a group of objects
         layoutService.removeObjectsFromCanvas = function(whatToRemove) {
             return drawingEngine.removeObjectsFromCanvas(whatToRemove, canvas);
+        };
+        // remove a specific object
+        layoutService.deleteSelectedObject = function(objectType){
+            if(objectType == undefined){
+                drawingEngine.deleteSelectedObject();
+            }else{
+                // find object to delete
+                drawingEngine.deleteSelectedObject(objectType);
+            }            
         };
         layoutService.setValuesForObject = function(object, top, left, width, height, strokeColor, strokeWidth, fill, opacity, strokeDash, visibility) {
             return drawingEngine.setValuesForObject(object, top, left, width, height, strokeColor, strokeWidth, fill, opacity, strokeDash, visibility);
         };
-        /**
-    Creates graprics from points and options
-    */
-    layoutService.createObject = function(points, options){
-    /* options = {
-        layer: "default",
-        group: "default",
-        style: {
-            lineColor: "red",
-            lineWidth: "1.0",
-            fill: "red",
-            opacity: "1.0",
-            lineStyle: {}
-        }
-    }*/
-    options.layer = options.layer != undefined ? options.layer : "default"; 
-    options.group = options.group != undefined ? options.group : "default"; 
-    var object = drawingEngine.createObject(canvas, points, options.style, false);
+        layoutService.createObject = function(points, options){
+
+            options.layer = options.layer != undefined ? options.layer : "default"; 
+            options.group = options.group != undefined ? options.group : "default"; 
+            var object = drawingEngine.createObject(canvas, points, options.style, false);
     // layers[options.layer].push(object);
     // groups[options.group].push(object);
     this.addObjectToCanvas(object);
@@ -508,17 +484,20 @@ layoutService.getAllObjectsByType = function(type) {
 layoutService.setZoomLevel = function(zoomLevel){
     drawingEngine.setZoomLevel(zoomLevel);
 };
-layoutService.drawPolygon = function(style){
-    drawingEngine.drawPolygon(style);
+layoutService.drawPolygon = function(data){
+    drawingEngine.drawPolygon(data);
+};
+layoutService.drawRect = function(data){
+    drawingEngine.drawRect(data);  
+};
+layoutService.drawCircle = function(data){
+    drawingEngine.drawCircle(data);    
 };
 layoutService.expandPictureToScreen = function(){
     drawingEngine.expandPictureToScreen();  
 };
-/**
-  Gets image by coords with provided zoom
-  is delayed by responce from google 
-  */
-  layoutService.getImageByCoords = function(coord, zoom, callbackFunction) {
+
+layoutService.getImageByCoords = function(coord, zoom, callbackFunction) {
     var overlay = new google.maps.OverlayView(),
     size = {width: 640, height: 640},
     maxZoomService = new google.maps.MaxZoomService(),

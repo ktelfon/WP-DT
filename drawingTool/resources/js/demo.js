@@ -18,55 +18,84 @@ document.onreadystatechange = function () {
 		spectrumLD.addEventListeners();
 		document.body.style.cursor = "wait";
 		spectrumLD.getImageByCoords(coord, 21, function(){
-			spectrumLD.createObject([
-				{x:5,y:5},{x:25,y:5},{x:10,y:10},
-				{x:25,y:22},{x:5,y:22},{x:5,y:5}
-				],{
-					layer: "default",
-					group: "default",
-					style: {
-						lineColor: "0xFF0000",
-						lineWidth: 1,
-						fill: "0x008000",
-						opacity: 0.5,
-						lineStyle: {}
-					}
-				});
+			// spectrumLD.createObject([
+			// 	{x:5,y:5},{x:25,y:5},{x:10,y:10},
+			// 	{x:25,y:22},{x:5,y:22},{x:5,y:5}
+			// 	],{
+			// 		layer: "default",
+			// 		group: "default",
+			// 		style: {
+			// 			lineColor: "0xFF0000",
+			// 			lineWidth: 1,
+			// 			fill: "0x008000",
+			// 			opacity: 0.5,
+			// 			lineStyle: {}
+			// 		}
+			// 	});
 
-			spectrumLD.createObject([
-				{x:30,y:30},{x:50,y:30},{x:50,y:50},{x:30,y:50}
-				],{
-					layer: "default",
-					group: "default",
-					style: {
-						lineColor: "0xFF0000",
-						lineWidth: 1,
-						fill: "0x008000",
-						opacity: 1,
-						lineStyle: {}
-					}
-				});
-			spectrumLD.createObject([
-				{x:2,y:2},{x:2+2.76,y:2},{x:2+2.76,y:2+ 6.1},{x:2,y:2+ 6.1}
-				],{
-					layer: "default",
-					group: "default",
-					style: {
-						lineColor: "0xFF0000",
-						lineWidth: 1,
-						fill: "0x008000",
-						opacity: 1,
-						lineStyle: {}
-					}
-				});			
-			spectrumLD.expandPictureToScreen();
-			spectrumLD.setViewBoundriesToBackgroundImage();
-			spectrumLD.addZoomController();
-			document.body.style.cursor = "default";
-		});
+			// spectrumLD.createObject([
+			// 	{x:30,y:30},{x:50,y:30},{x:50,y:50},{x:30,y:50}
+			// 	],{
+			// 		layer: "default",
+			// 		group: "default",
+			// 		style: {
+			// 			lineColor: "0xFF0000",
+			// 			lineWidth: 1,
+			// 			fill: "0x008000",
+			// 			opacity: 1,
+			// 			lineStyle: {}
+			// 		}
+			// 	});
+		spectrumLD.createObject([
+			{x:2,y:2},{x:2+2.76,y:2},{x:2+2.76,y:2+ 6.1},{x:2,y:2+ 6.1}
+			],{
+				layer: "default",
+				group: "default",
+				style: {
+					lineColor: "0xFF0000",
+					lineWidth: 1,
+					fill: "0x008000",
+					opacity: 1,
+					lineStyle: {}
+				}
+			});			
+		spectrumLD.expandPictureToScreen();
+		spectrumLD.setViewBoundriesToBackgroundImage();
+		spectrumLD.addZoomController();
+		document.body.style.cursor = "default";
+	});
 }
 }
 
+function deleteo(){
+	spectrumLD.deleteSelectedObject();
+}
+function drawR(){
+	spectrumLD.drawRect(	{
+		layer: "default",
+		group: "default",
+		style: {
+			lineColor: "0xFF0000",
+			lineWidth: 1,
+			fill: "0x008000",
+			opacity: 1,
+			lineStyle: {}
+		}
+	});
+}
+function drawC(){
+	spectrumLD.drawCircle(	{
+		layer: "default",
+		group: "default",
+		style: {
+			lineColor: "0xFF0000",
+			lineWidth: 1,
+			fill: "0x008000",
+			opacity: 1,
+			lineStyle: {}
+		}
+	});
+}
 function draw(){
 	spectrumLD.drawPolygon(	{
 		layer: "default",

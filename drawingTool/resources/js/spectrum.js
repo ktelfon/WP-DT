@@ -35,7 +35,7 @@ var SpectrumLayoutDesigner = function(constructorOptions){
 	};
 
 	spectrumLayoutDesigner.setViewBoundriesToBackgroundImage = function(){
-    	layoutService.setViewBoundriesToBackgroundImage();            
+		layoutService.setViewBoundriesToBackgroundImage();            
 	};
 
 	spectrumLayoutDesigner.increaseZoomLevel = function(){
@@ -57,8 +57,18 @@ var SpectrumLayoutDesigner = function(constructorOptions){
 	spectrumLayoutDesigner.removeZoomController = function(){
 		layoutService.removeZoomController();	
 	};
-	spectrumLayoutDesigner.drawPolygon = function(style){
-		layoutService.drawPolygon(style);	
+	spectrumLayoutDesigner.drawPolygon = function(data){
+		layoutService.drawPolygon(data);	
+	};
+	spectrumLayoutDesigner.drawRect = function(data){
+		layoutService.drawRect(data);	
+	};
+	spectrumLayoutDesigner.drawCircle = function(data){
+		layoutService.drawCircle(data);	
+	};
+	// objectType - what type of object to delete, if not set delete selected
+	spectrumLayoutDesigner.deleteSelectedObject = function(objectType){
+		layoutService.deleteSelectedObject(objectType);
 	};
 
 	return spectrumLayoutDesigner;

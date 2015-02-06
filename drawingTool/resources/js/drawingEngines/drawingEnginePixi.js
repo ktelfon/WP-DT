@@ -1,4 +1,5 @@
 var DrawingEngine = function() {
+
 	var drawingEngine = {},	defaultContainer = {},
 	defaultContainerScale = 1, minScale = 0.005,
 	maxScreenWidth = 1980, maxScreenHeight = 1080,
@@ -13,18 +14,9 @@ var DrawingEngine = function() {
 	 util = Util(), canvasElement = {},
 	 canvasWrapElement = {},
 	 defaultSnapPointRadius = 0.2,
-	 drawingModesProperties = { 
-	 	snapPointRadius: defaultSnapPointRadius,
-	 	mouseDownPoint: undefined,
-	 	mouseFollowPoint: undefined,
-	 	lines: [],
-	 	points: [],
-	 	drawingModeTypes : {
-	 		polygon: false,
-	 		circle: false,
-	 		rect: false
-	 	},
-	 },
+	 drawingModesProperties = setDefaultDrawingModesProperties(),
+	 geometryUtils = new GeometryUtils(),
+	 selectedObject = undefined,
 	 backgroundImageProperties = {
 	 	backgroundPicSet : false	
 	 },
@@ -99,8 +91,6 @@ var DrawingEngine = function() {
 	 	canvasElement = document.getElementById(elementId);
 	 	canvasWrapElement = document.getElementById(elementWrap);
 
-	 	canvasElement.style.cursor = 'crosshair';
-
 	 	stage = new PIXI.Stage(0xFFFFFF);
 	 	defaultContainer = new PIXI.DisplayObjectContainer();
 
@@ -135,20 +125,21 @@ var DrawingEngine = function() {
 			clientY = -1;
 			mousedown = true;
 
-			if(drawingModesProperties.drawingModeTypes.polygon === true){
-				drawingModesProperties.mouseDownPoint = {
-					x: (interactionData.originalEvent.clientX - defaultContainerZoomOffsetX) / defaultContainerScale,
-					y: (interactionData.originalEvent.clientY - defaultContainerZoomOffsetY) / defaultContainerScale
-				};
+			drawingModesProperties.mouseDownPoint = {
+				x: (interactionData.originalEvent.clientX - defaultContainerZoomOffsetX) / defaultContainerScale,
+				y: (interactionData.originalEvent.clientY - defaultContainerZoomOffsetY) / defaultContainerScale
+			};
+
+			if(drawingModesProperties.drawingModeTypes.polygon === true){				
 				drawingModesProperties.points.push(util.copy(drawingModesProperties.mouseDownPoint));
 
 				if(drawingModesProperties.points.length > 1){
 					var line = createPolygon(
-						[drawingModesProperties.points.length - 2, drawingModesProperties.mouseFollowPoint],
-						drawingModesProperties.style.style); 
+						[drawingModesProperties.lines, drawingModesProperties.mouseFollowPoint],
+						drawingModesProperties.data.style); 
 					drawingModesProperties.lines.push(line);
 
-					if(pointsDistance(
+					if(geometryUtils.pointsDistance(
 						fromPixelsTometers([drawingModesProperties.points[0]])[0],
 						fromPixelsTometers([drawingModesProperties.points[drawingModesProperties.points.length - 1]])[0]) < drawingModesProperties.snapPointRadius){
 						stopDrawingPolygon();
@@ -165,6 +156,14 @@ var DrawingEngine = function() {
 
 	stage.mouseup = function(interactionData){
 		mousedown = false;
+		
+		if(drawingModesProperties.drawingModeTypes.circle === true){
+			stopDrawingCircle();
+			
+		}
+		if(drawingModesProperties.drawingModeTypes.rect === true){
+			stopDrawingRect();
+		}
 	};
 
 	stage.mousemove = function(interactionData){
@@ -181,7 +180,7 @@ var DrawingEngine = function() {
 		if(drawingModesProperties.drawingModeTypes.polygon === true){
 			lineFollowMouse();
 			if(drawingModesProperties.points.length > 1){
-				if(pointsDistance(
+				if(geometryUtils.pointsDistance(
 					fromPixelsTometers([drawingModesProperties.points[0]])[0],
 					fromPixelsTometers([drawingModesProperties.mouseFollowPoint])[0]) < drawingModesProperties.snapPointRadius){
 					canvasElement.style.cursor = 'pointer';
@@ -191,10 +190,10 @@ var DrawingEngine = function() {
 		}
 	}
 	if(drawingModesProperties.drawingModeTypes.circle === true){
-		circleFollowMouse(e);
+		circleFollowMouse(e, drawingModesProperties.data.style);
 	}
 	if(drawingModesProperties.drawingModeTypes.rect === true){
-		rectFollowMouse(e);
+		rectFollowMouse(e, drawingModesProperties.data.style);
 	}
 
 };
@@ -276,73 +275,36 @@ drawingEngine.createBackgroundImage = function(satelliteImage){
 
 		var shape = createPolygon(points, style);
 
-		shape.buttonMode = true;
-		shape.interactive = true;
-		shape.renderable = true;
+		shape = addListenersToShape(shape);
+		return shape;
+	};
 
-		// add listeners to object
+	drawingEngine.centerView = function(){
+		var centerOffsetX = (defaultContainer.width - canvasElement.width) / 2,
+		centerOffsetY = (defaultContainer.height - canvasElement.height) / 2;
 
-		shape.mousedown = shape.touchstart = function(data)
-		{
-            // store a refference to the data
-            // The reason for this is because of multitouch
-            // we want to track the movement of this particular touch
-            this.data = data;
-            this.alpha = 0.9;
-            this.dragging = isObjectDragging = true;
-            this.sx = this.data.getLocalPosition(shape).x * shape.scale.x;
-            this.sy = this.data.getLocalPosition(shape).y * shape.scale.y;   
-        };
-        
-        // set the events for when the mouse is released or a touch is released
-        shape.mouseup = shape.mouseupoutside = shape.touchend = shape.touchendoutside = function(data)
-        {
-        	this.alpha = 1
-        	this.dragging = isObjectDragging = false;
-            // set the interaction data to null
-            this.data = null;
-        };
-        
-        // set the callbacks for when the mouse or a touch moves
-        shape.mousemove = shape.touchmove = function(data)
-        {
-        	if(this.dragging)
-        	{
-                // need to get parent coords..
-                var newPosition = this.data.getLocalPosition(this.parent);
-                this.position.x = newPosition.x - this.sx;
-                this.position.y = newPosition.y - this.sy;
-            }
-        }
-        return shape;
-    };
+		defaultContainer.position.set(-centerOffsetX, -centerOffsetY);
+		defaultContainerZoomOffsetX = defaultContainer.position.x;
+		defaultContainerZoomOffsetY = defaultContainer.position.y;
+		renderer.render(stage);
+	};
 
-    drawingEngine.centerView = function(){
-    	var centerOffsetX = (defaultContainer.width - canvasElement.width) / 2,
-    	centerOffsetY = (defaultContainer.height - canvasElement.height) / 2;
+	drawingEngine.increaseZoomLevel = function(){
+		this.setZoomLevel(defaultContainerScale + scaleStep);
+	};
+	drawingEngine.reduceZoomLevel = function(){
+		this.setZoomLevel(defaultContainerScale - scaleStep);
+	}; 
 
-    	defaultContainer.position.set(-centerOffsetX, -centerOffsetY);
-    	defaultContainerZoomOffsetX = defaultContainer.position.x;
-    	defaultContainerZoomOffsetY = defaultContainer.position.y;
-    	renderer.render(stage);
-    };
-
-    drawingEngine.increaseZoomLevel = function(){
-    	this.setZoomLevel(defaultContainerScale + scaleStep);
-    };
-    drawingEngine.reduceZoomLevel = function(){
-    	this.setZoomLevel(defaultContainerScale - scaleStep);
-    }; 
-
-    drawingEngine.expandPictureToScreen = function(){
-    	if(backgroundImageProperties.backgroundPicSet === true){
-    		this.centerView();
-    		while(defaultContainer.width < maxScreenWidth || defaultContainer.height < maxScreenHeight){
-    			defaultContainerScale *= 1.1;
-    			this.setZoomLevel(defaultContainerScale);
-    		}
-    		defaultContainerZoomOffsetX = defaultContainer.position.x ;
-    		defaultContainerZoomOffsetY = defaultContainer.position.y ;
+	drawingEngine.expandPictureToScreen = function(){
+		if(backgroundImageProperties.backgroundPicSet === true){
+			this.centerView();
+			while(defaultContainer.width < maxScreenWidth || defaultContainer.height < maxScreenHeight){
+				defaultContainerScale *= 1.1;
+				this.setZoomLevel(defaultContainerScale);
+			}
+			defaultContainerZoomOffsetX = defaultContainer.position.x ;
+			defaultContainerZoomOffsetY = defaultContainer.position.y ;
 
 	        // Move the main layer based on above calucalations
 	        minScale = defaultContainerScale;
@@ -401,50 +363,79 @@ drawingEngine.createBackgroundImage = function(satelliteImage){
 	    return defaultContainerScale; 
 	}
 
-	drawingEngine.drawPolygon = function(style){
+	drawingEngine.drawPolygon = function(data){
 		if(drawingModesProperties.drawingModeTypes.polygon){
 			stopDrawingPolygon();
 		}else{
-			drawingModesProperties.drawingModeTypes.polygon = true;
-			drawingModesProperties.style = style;
+			startDrawing("polygon", data);
 		}		
+	};
+
+	drawingEngine.drawRect = function(data){
+		if(drawingModesProperties.drawingModeTypes.rect){
+			stopDrawingRect();
+		}else{
+			startDrawing("rect", data);
+		}	
+	};
+	drawingEngine.drawCircle = function(data){
+		if(drawingModesProperties.drawingModeTypes.circle){
+			stopDrawingCircle();
+		}else{
+			startDrawing("circle", data);
+		}	   
+	};
+
+	drawingEngine.deleteSelectedObject = function(object){
+		if(object == undefined){
+			selectedObject.clear();
+			stage.removeChild(selectedObject);
+		}else{
+
+		}
 	};
 
 	//
 	// Private Functions
 	//
 
-	/**
-		Transforms from meters to pixels
-		*/
+	function startDrawing(drawingMode, data){
+		drawingModesProperties.drawingModeTypes[drawingMode] = true;
+		canvasElement.style.cursor = 'crosshair';
+		drawingModesProperties.data = data;
+	} 
 
-		function fromMetersToPixels(meterPoints){
-			var pixelPoints = [],
-			coefWidth = backgroundImageProperties.backgroundImageObject.width / backgroundImageProperties.imageMeterSize.width,
-			coefHeight = backgroundImageProperties.backgroundImageObject.height / backgroundImageProperties.imageMeterSize.height;
-			for(var i = 0; i < meterPoints.length; i++){
-				pixelPoints.push({x: meterPoints[i].x  * coefWidth,y: meterPoints[i].y * coefHeight});
-			}
-			return pixelPoints;
+	//
+	//	Transforms from meters to pixels
+	//	
+
+	function fromMetersToPixels(meterPoints){
+		var pixelPoints = [],
+		coefWidth = backgroundImageProperties.backgroundImageObject.width / backgroundImageProperties.imageMeterSize.width,
+		coefHeight = backgroundImageProperties.backgroundImageObject.height / backgroundImageProperties.imageMeterSize.height;
+		for(var i = 0; i < meterPoints.length; i++){
+			pixelPoints.push({x: meterPoints[i].x  * coefWidth,y: meterPoints[i].y * coefHeight});
 		}
+		return pixelPoints;
+	}
 
-	/**
-		Transforms from pixels to meters
-		*/
+	//
+	//	Transforms from pixels to meters
+	//	
 
-		function fromPixelsTometers(pixelPoints){
-			var meterPoints = [],
-			coefWidth = backgroundImageProperties.imageMeterSize.width / backgroundImageProperties.backgroundImageObject.width,
-			coefHeight = backgroundImageProperties.imageMeterSize.height / backgroundImageProperties.backgroundImageObject.height;
-			for(var i = 0; i < pixelPoints.length; i++){
-				meterPoints.push({x: pixelPoints[i].x  * coefWidth,y: pixelPoints[i].y * coefHeight});
-			}
-			return meterPoints;
+	function fromPixelsTometers(pixelPoints){
+		var meterPoints = [],
+		coefWidth = backgroundImageProperties.imageMeterSize.width / backgroundImageProperties.backgroundImageObject.width,
+		coefHeight = backgroundImageProperties.imageMeterSize.height / backgroundImageProperties.backgroundImageObject.height;
+		for(var i = 0; i < pixelPoints.length; i++){
+			meterPoints.push({x: pixelPoints[i].x  * coefWidth,y: pixelPoints[i].y * coefHeight});
 		}
+		return meterPoints;
+	}
 
-	/*
-	Check if view is in boundries and changes the value of allowedPanDirections
-	*/
+	//
+	//Check if view is in boundries and changes the value of allowedPanDirections
+	//
 	function checkIfViewIsInBoundries(zoom){
 
 		// return position 
@@ -487,17 +478,17 @@ drawingEngine.createBackgroundImage = function(satelliteImage){
 		}
 	}
 
-		/**
-		 * Calculate the current window size and set the canvas renderer size accordingly
-		 */
-		 var rendererResize = function () {
-		 	var width = window.innerWidth,
-		 	height = window.innerHeight,
-		 	targetScale;
+		//
+		// Calculate the current window size and set the canvas renderer size accordingly
+		//
+		var rendererResize = function () {
+			var width = window.innerWidth,
+			height = window.innerHeight,
+			targetScale;
 
-			 /**
-			 * Calculate the current window size and set the canvas renderer size accordingly
-			 */
+			 //
+			 // Calculate the current window size and set the canvas renderer size accordingly
+			 //
 			 canvasElement.width = width * window.devicePixelRatio;
 			 canvasElement.height = height * window.devicePixelRatio;
 			 canvasElement.style.width = width + 'px';
@@ -505,10 +496,10 @@ drawingEngine.createBackgroundImage = function(satelliteImage){
 
 			    // defaultContainer._width = canvasElement.width; 
 			    // defaultContainer._height = canvasElement.height; 
-			    /**
-			     * Resize the PIXI renderer
-			     * Let PIXI know that we changed the size of the viewport
-			     */
+			    //
+			     // Resize the PIXI renderer
+			     //Let PIXI know that we changed the size of the viewport
+			     //
 
 			     renderer.resize(canvasElement.width, canvasElement.height);
 
@@ -524,10 +515,59 @@ drawingEngine.createBackgroundImage = function(satelliteImage){
 			 	return false;
 			 }
 
-			 function createPolygon(points, style){
-			 	var shape = new PIXI.Graphics();
-			 	shape.beginFill(style.fill, style.opacity);
-			 	shape.lineStyle(style.lineWidth, style.lineColor, 1);
+			 function addListenersToShape(shape){
+			 	shape.buttonMode = true;
+			 	shape.interactive = true;
+			 	shape.renderable = true;
+
+				// add listeners to object
+
+				shape.mousedown = shape.touchstart = function(data)
+				{
+		            // store a refference to the data
+		            // The reason for this is because of multitouch
+		            // we want to track the movement of this particular touch
+		            if(selectedObject != undefined){
+		            	selectedObject.alpha = 1;
+		            }
+		            this.data = data;
+		            this.alpha = 0.8;
+		            this.dragging = isObjectDragging = true;
+		            this.sx = this.data.getLocalPosition(shape).x * shape.scale.x;
+		            this.sy = this.data.getLocalPosition(shape).y * shape.scale.y;
+		            this.isSelected = true;   
+		            selectedObject = this;
+		        };
+		        
+		        // set the events for when the mouse is released or a touch is released
+		        shape.mouseup = shape.mouseupoutside = shape.touchend = shape.touchendoutside = function(data)
+		        {
+		        	if(!this.isSelected === true){
+		        		this.alpha = 1
+		        	}
+		        	this.dragging = isObjectDragging = false;
+		            // set the interaction data to null
+		            this.data = null;
+		        };
+		        
+		        // set the callbacks for when the mouse or a touch moves
+		        shape.mousemove = shape.touchmove = function(data)
+		        {
+		        	if(this.dragging)
+		        	{
+		                // need to get parent coords..
+		                var newPosition = this.data.getLocalPosition(this.parent);
+		                this.position.x = newPosition.x - this.sx;
+		                this.position.y = newPosition.y - this.sy;
+		            }
+		        }
+		        return shape;
+		    }
+
+		    function createPolygon(points, style){
+		    	var shape = new PIXI.Graphics();
+		    	shape.beginFill(style.fill, style.opacity);
+		    	shape.lineStyle(style.lineWidth, style.lineColor, 1);
 
 				// draw a shape
 				shape.moveTo(points[0].x, points[0].y);
@@ -596,16 +636,17 @@ drawingEngine.createBackgroundImage = function(satelliteImage){
 	        			stage.removeChild(drawingModesProperties.lines[drawingModesProperties.lines.length - 1]);
 	        			drawingModesProperties.lines.pop();
 	        		}
-	        		if(drawingModesProperties.points > 0){
-	        			var points = [drawingModesProperties.mouseDownPoint, drawingModesProperties.mouseFollowPoint];
+	        		if(drawingModesProperties.points.length === 1){
+	        			var points = [drawingModesProperties.points[0], drawingModesProperties.mouseFollowPoint];
 	        		}else{
-	        			var points = [drawingModesProperties.points[drawingModesProperties.points.length-1], drawingModesProperties.mouseFollowPoint];
+	        			var points = [drawingModesProperties.lines[drawingModesProperties.lines.length-1].points[1], drawingModesProperties.mouseFollowPoint];
 	        		}
-	        		
+
 	        		var line = createPolygon(
 	        			points,
-	        			drawingModesProperties.style.style); 
+	        			drawingModesProperties.data.style); 
 	        		drawingModesProperties.lines.push(line);	
+	        		line.points = points;
 	        		drawingEngine.addObjectToCanvas(canvas, line);
 	        		renderer.render(stage);
 	        	}
@@ -615,14 +656,69 @@ drawingEngine.createBackgroundImage = function(satelliteImage){
 	        	var newShape = drawingEngine.createObject(
 	        		canvas,
 	        		drawingModesProperties.points,
-	        		drawingModesProperties.style.style,
+	        		drawingModesProperties.data.style,
 	        		true
 	        		);
 	        	drawingEngine.addObjectToCanvas(canvas, newShape);
 	        	// clean drawingModesProperties
-	        	for(var i = 0; i < drawingModesProperties.lines.length; i++){
-	        		drawingModesProperties.lines[i].clear();
+	        	drawingModesProperties.lines.map(function(line){
+	        		line.clear();
+	        	});
+	        	drawingModesProperties = setDefaultDrawingModesProperties();
+	        };
+	        function circleFollowMouse(e, style){
+	        	if(drawingModesProperties.mouseDownPoint != undefined){
+	        		if(drawingModesProperties.circle != undefined){
+	        			drawingModesProperties.circle.clear();
+	        			stage.removeChild(drawingModesProperties.circle);
+	        		}
+	        		var radius = geometryUtils.pointsDistance(drawingModesProperties.mouseDownPoint, drawingModesProperties.mouseFollowPoint),
+	        		shape = new PIXI.Graphics();
+	        		shape.beginFill(style.fill, style.opacity);
+	        		shape.lineStyle(style.lineWidth, style.lineColor, 1);
+	        		shape.drawCircle(
+	        			drawingModesProperties.mouseDownPoint.x,
+	        			drawingModesProperties.mouseDownPoint.y,
+	        			radius);
+	        		shape.endFill();
+	        		shape.scale.set(1, 1);
+	        		drawingModesProperties.circle = shape;
+	        		drawingEngine.addObjectToCanvas(canvas, shape);
 	        	}
+	        };
+
+	        function stopDrawingCircle(){
+	        	drawingModesProperties.drawingModeTypes.circle = false;
+	        	addListenersToShape(drawingModesProperties.circle);
+	        	drawingModesProperties = setDefaultDrawingModesProperties();
+	        };
+
+	        function rectFollowMouse(e, style){
+	        	if(drawingModesProperties.mouseDownPoint != undefined){
+	        		if(drawingModesProperties.rect != undefined){
+	        			drawingModesProperties.rect.clear();
+	        			stage.removeChild(drawingModesProperties.rect);
+	        		}
+	        		var shape = new PIXI.Graphics();
+	        		shape.beginFill(style.fill, style.opacity);
+	        		shape.lineStyle(style.lineWidth, style.lineColor, 1);
+	        		shape.drawRect(
+	        			drawingModesProperties.mouseDownPoint.x,
+	        			drawingModesProperties.mouseDownPoint.y,
+	        			Math.abs(drawingModesProperties.mouseDownPoint.x - drawingModesProperties.mouseFollowPoint.x),
+	        			Math.abs(drawingModesProperties.mouseDownPoint.y - drawingModesProperties.mouseFollowPoint.y));
+	        		shape.endFill();
+	        		shape.scale.set(1, 1);
+	        		drawingModesProperties.rect = shape;
+	        		drawingEngine.addObjectToCanvas(canvas, shape);
+	        	}
+	        };
+
+	        function stopDrawingRect(){
+	        	drawingModesProperties.drawingModeTypes.rect = false;
+	        };
+
+	        function setDefaultDrawingModesProperties(){ 
 	        	drawingModesProperties = { 
 	        		snapPointRadius: defaultSnapPointRadius,
 	        		mouseDownPoint: undefined,
@@ -635,23 +731,8 @@ drawingEngine.createBackgroundImage = function(satelliteImage){
 	        			rect: false
 	        		},
 	        	};
+	        	return drawingModesProperties;
 	        };
-	        function circleFollowMouse(e){
-
-	        };
-	        function rectFollowMouse(e){
-
-	        };
-
-	        function pointsDistance(point1, point2){
-	        	var xs = 0;
-	        	var ys = 0;
-	        	xs = point2.x - point1.x;
-	        	xs = xs * xs;
-	        	ys = point2.y - point1.y;
-	        	ys = ys * ys;
-	        	return Math.sqrt(xs + ys);
-	        }
 
 	        function animate() {
 	        	requestAnimFrame( animate );
