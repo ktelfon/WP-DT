@@ -49,6 +49,9 @@ var DrawingEngine = function() {
 	drawingEngine.setMaxPictureExpansionHeight = function(newMaxScreenHeight){
 		maxScreenHeight = newMaxScreenHeight;
 	};
+	drawingEngine.getSelectedObject = function(){
+		return selectedObject;
+	};
 
 	drawingEngine.setZoomLevel = function(zoomLevel){
 		var defaultContainerOldScale = defaultContainerScale;
@@ -125,10 +128,12 @@ var DrawingEngine = function() {
 			clientY = -1;
 			mousedown = true;
 
-			drawingModesProperties.mouseDownPoint = {
-				x: (interactionData.originalEvent.clientX - defaultContainerZoomOffsetX) / defaultContainerScale,
-				y: (interactionData.originalEvent.clientY - defaultContainerZoomOffsetY) / defaultContainerScale
-			};
+			if(isDrawingModeOn()){
+				drawingModesProperties.mouseDownPoint = {
+					x: (interactionData.originalEvent.clientX - defaultContainerZoomOffsetX) / defaultContainerScale,
+					y: (interactionData.originalEvent.clientY - defaultContainerZoomOffsetY) / defaultContainerScale
+				};
+			}
 
 			if(drawingModesProperties.drawingModeTypes.polygon === true){				
 				drawingModesProperties.points.push(util.copy(drawingModesProperties.mouseDownPoint));
@@ -156,10 +161,10 @@ var DrawingEngine = function() {
 
 	stage.mouseup = function(interactionData){
 		mousedown = false;
-		
+
 		if(drawingModesProperties.drawingModeTypes.circle === true){
 			stopDrawingCircle();
-			
+
 		}
 		if(drawingModesProperties.drawingModeTypes.rect === true){
 			stopDrawingRect();
@@ -169,10 +174,12 @@ var DrawingEngine = function() {
 	stage.mousemove = function(interactionData){
 		var e = interactionData.originalEvent;
 
-		drawingModesProperties.mouseFollowPoint = {
-			x: (interactionData.originalEvent.clientX - defaultContainerZoomOffsetX) / defaultContainerScale ,
-			y: (interactionData.originalEvent.clientY - defaultContainerZoomOffsetY) / defaultContainerScale
-		};   	
+		if(isDrawingModeOn()){
+			drawingModesProperties.mouseFollowPoint = {
+				x: (interactionData.originalEvent.clientX - defaultContainerZoomOffsetX) / defaultContainerScale ,
+				y: (interactionData.originalEvent.clientY - defaultContainerZoomOffsetY) / defaultContainerScale
+			};   	
+		}
 
 		if(mousedown && !isObjectDragging && !isDrawingModeOn()) {
 			panCanvas(e);
@@ -391,7 +398,17 @@ drawingEngine.createBackgroundImage = function(satelliteImage){
 			selectedObject.clear();
 			stage.removeChild(selectedObject);
 		}else{
+			object.clear();
+			stage.removeChild(object);
+		}
+		selectedObject = undefined;
+	};
 
+	drawingEngine.removeObjectsFromCanvas = function(whatToRemove, canvas){
+		if(whatToRemove != undefined && whatToRemove.length != undefined && whatToRemove.length > 0){
+			whatToRemove.map(function(shape){
+				drawingEngine.deleteSelectedObject(shape);
+			});
 		}
 	};
 
@@ -651,8 +668,8 @@ drawingEngine.createBackgroundImage = function(satelliteImage){
 	        		renderer.render(stage);
 	        	}
 	        };
+
 	        function stopDrawingPolygon(){
-	        	drawingModesProperties.drawingModeTypes.polygon = false;
 	        	var newShape = drawingEngine.createObject(
 	        		canvas,
 	        		drawingModesProperties.points,
@@ -664,8 +681,15 @@ drawingEngine.createBackgroundImage = function(satelliteImage){
 	        	drawingModesProperties.lines.map(function(line){
 	        		line.clear();
 	        	});
+	        	var event = new CustomEvent("objectCreated", { "detail": { 
+	        		object: newShape,
+	        		data: drawingModesProperties.data 
+	        	}});
+
+	        	canvasElement.dispatchEvent(event);
 	        	drawingModesProperties = setDefaultDrawingModesProperties();
 	        };
+
 	        function circleFollowMouse(e, style){
 	        	if(drawingModesProperties.mouseDownPoint != undefined){
 	        		if(drawingModesProperties.circle != undefined){
@@ -688,8 +712,14 @@ drawingEngine.createBackgroundImage = function(satelliteImage){
 	        };
 
 	        function stopDrawingCircle(){
-	        	drawingModesProperties.drawingModeTypes.circle = false;
-	        	addListenersToShape(drawingModesProperties.circle);
+	        	if(drawingModesProperties.circle != undefined){
+	        		addListenersToShape(drawingModesProperties.circle);
+	        		var event = new CustomEvent("objectCreated", { "detail": { 
+	        			object: drawingModesProperties.circle,
+	        			data: drawingModesProperties.data 
+	        		}});
+	        		canvasElement.dispatchEvent(event);
+	        	}
 	        	drawingModesProperties = setDefaultDrawingModesProperties();
 	        };
 
@@ -705,8 +735,8 @@ drawingEngine.createBackgroundImage = function(satelliteImage){
 	        		shape.drawRect(
 	        			drawingModesProperties.mouseDownPoint.x,
 	        			drawingModesProperties.mouseDownPoint.y,
-	        			Math.abs(drawingModesProperties.mouseDownPoint.x - drawingModesProperties.mouseFollowPoint.x),
-	        			Math.abs(drawingModesProperties.mouseDownPoint.y - drawingModesProperties.mouseFollowPoint.y));
+	        			-(drawingModesProperties.mouseDownPoint.x - drawingModesProperties.mouseFollowPoint.x),
+	        			-(drawingModesProperties.mouseDownPoint.y - drawingModesProperties.mouseFollowPoint.y));
 	        		shape.endFill();
 	        		shape.scale.set(1, 1);
 	        		drawingModesProperties.rect = shape;
@@ -715,7 +745,16 @@ drawingEngine.createBackgroundImage = function(satelliteImage){
 	        };
 
 	        function stopDrawingRect(){
-	        	drawingModesProperties.drawingModeTypes.rect = false;
+	        	if(drawingModesProperties.rect != undefined){
+	        		addListenersToShape(drawingModesProperties.rect);
+	        		// Create the event
+	        		var event = new CustomEvent("objectCreated", { "detail": { 
+	        			object: drawingModesProperties.rect,
+	        			data: drawingModesProperties.data
+	        		}});
+	        		canvasElement.dispatchEvent(event);
+	        	}	        	
+	        	drawingModesProperties = setDefaultDrawingModesProperties();
 	        };
 
 	        function setDefaultDrawingModesProperties(){ 
@@ -731,6 +770,9 @@ drawingEngine.createBackgroundImage = function(satelliteImage){
 	        			rect: false
 	        		},
 	        	};
+	        	if(canvasElement.style != undefined){
+	        		canvasElement.style.cursor = 'default';
+	        	}	        	
 	        	return drawingModesProperties;
 	        };
 

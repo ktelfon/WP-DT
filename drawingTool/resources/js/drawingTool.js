@@ -2,8 +2,9 @@ var LayoutService = function(constructorOptions) {
 
     var canvas = null,
     roofs = [],
-    // groups = new Map(),
-    // layers = new Map(),
+    objectsIds = 0,
+    groups = new Object(),
+    layers = new Object(),
     layoutService = {},
     geometryUtils = new GeometryUtils(),
     inter = new Intersection(),
@@ -17,23 +18,29 @@ var LayoutService = function(constructorOptions) {
     canvasWrapElement = {},
     util = Util();
 
+     function getObjectIdNumber() {
+        objectsIds++;
+        return objectsIds;
+    }
+
     var createObject = function(objectOptions) {
         var object = {};
         object.type = objectOptions.type;
         object.graphicalObject = drawingEngine.createObject(objectOptions.graphicalObjectOptions);
+        object.id = getObjectIdNumber();
         return object;
     };
-    // var group = {
-    //     type: 'default',
-    //     objects: []
-    // };
-    // var layer = {
-    //     type: 'default',
-    //     objects: []
-    // };
+    var group = {
+        type: 'default',
+        objects: []
+    };
+    var layer = {
+        type: 'default',
+        objects: []
+    };
 
-    // groups[group.type] = group.objects;
-    // layers[layer.type] = layer.objects;
+    groups[group.type] = group.objects;
+    layers[layer.type] = layer.objects;
 
     function isPointInPoly(poly, pt) {
         for (var c = false, i = -1, l = poly.length, j = l - 1; ++i < l; j = i)
@@ -79,41 +86,39 @@ function checkIfObstructionCanBePlaced(obstructionPoints) {
     }
 }
 
-// layoutService.addLayer = function(type){
-//     var layerIsCreated = false;
-//     for(var type in layers) {
-//         if(myObject.hasOwnProperty(key)) {
-//             layerIsCreated = true;
-//         }
-//     }
-//     if(!layerIsCreated){
-//         layers[type] = [];
-//     }
-// };
+layoutService.addLayer = function(layerName){
+    var layerIsCreated = false;
+    for(var type in layers) {
+        if(layers.hasOwnProperty(layerName)) {
+            layerIsCreated = true;
+        }
+    }
+    if(!layerIsCreated){
+        layers[layerName] = [];
+    }
+};
 
-// layoutService.addGroup = function(type){
-//     var groupIsCreated = false;
-//     for(var type in groups) {
-//         if(myObject.hasOwnProperty(key)) {
-//             groupIsCreated = true;
-//         }
-//     }
-//     if(!groupIsCreated){
-//         groups[type] = [];
-//     }
-// };
+layoutService.addGroup = function(groupName){
+    var groupIsCreated = false;
+    for(var type in groups) {
+        if(groups.hasOwnProperty(groupName)) {
+            groupIsCreated = true;
+        }
+    }
+    if(!groupIsCreated){
+        groups[groupName] = [];
+    }
+};
 
-// layoutService.removeLayer = function(type){
-//     for(var i= 0;  i < layers[type].length; i++){
-//         layoutService.removeObjectsFromCanvas(layers[type][i]);
-//     }
-// };
+layoutService.removeLayer = function(type){
+    layoutService.removeObjectsFromCanvas(layers[type][i]);
+    layers[type] = [];
+};
 
-// layoutService.removeGroup = function(type){
-//     for(var i= 0;  i < groups[type].length; i++){
-//         layoutService.removeObjectsFromCanvas(groups[type][i]);
-//     }
-// };
+layoutService.removeGroup = function(type){
+    layoutService.removeObjectsFromCanvas(groups[type]);
+    groups[type] = [];
+};
 
 layoutService.createObstruction = function(isPolygon, shapePoints, tmpRoof, obstructionStyle) {
     var canBePlaced = false;
@@ -220,6 +225,19 @@ layoutService.createCanvas = function(elementId, elementWrap) {
     canvasElement = document.getElementById(elementId);
     canvasWrapElement = document.getElementById(elementWrap);
     canvas = drawingEngine.createCanvas(elementId, elementWrap);
+    canvasElement.addEventListener("objectCreated", function(e) {
+
+        e.detail.data.layer = e.detail.data.layer != undefined ? e.detail.data.layer : "default"; 
+        e.detail.data.group = e.detail.data.group != undefined ? e.detail.data.group : "default";
+
+        layers[e.detail.data.layer].push(e.detail.data.object);
+        groups[e.detail.data.group].push(e.detail.data.object);
+
+        e.detail.data.object.layer = e.detail.data.layer; 
+        e.detail.data.object.group = e.detail.data.group; 
+        
+        object.id = getObjectIdNumber();
+    });
     return canvas;
 };
 layoutService.increaseZoomLevel = function(){
@@ -453,6 +471,9 @@ layoutService.mouseOverCell = function(e, canvasOffset, scale, canvas, selectedR
             }
             return transformPoints;
         };
+        layoutService.setValuesForObject = function(object, top, left, width, height, strokeColor, strokeWidth, fill, opacity, strokeDash, visibility) {
+            return drawingEngine.setValuesForObject(object, top, left, width, height, strokeColor, strokeWidth, fill, opacity, strokeDash, visibility);
+        };
         layoutService.getImageFromCanvas = function(canvas) {
             drawingEngine.getImageFromCanvas(canvas);
         };
@@ -466,87 +487,98 @@ layoutService.mouseOverCell = function(e, canvasOffset, scale, canvas, selectedR
                 drawingEngine.deleteSelectedObject();
             }else{
                 // find object to delete
-                drawingEngine.deleteSelectedObject(objectType);
-            }            
-        };
-        layoutService.setValuesForObject = function(object, top, left, width, height, strokeColor, strokeWidth, fill, opacity, strokeDash, visibility) {
-            return drawingEngine.setValuesForObject(object, top, left, width, height, strokeColor, strokeWidth, fill, opacity, strokeDash, visibility);
-        };
-        layoutService.createObject = function(points, options){
+                var selectedObject = drawingEngine.getSelectedObject();
 
-            options.layer = options.layer != undefined ? options.layer : "default"; 
-            options.group = options.group != undefined ? options.group : "default"; 
-            var object = drawingEngine.createObject(canvas, points, options.style, false);
-    // layers[options.layer].push(object);
-    // groups[options.group].push(object);
-    this.addObjectToCanvas(object);
-};
-layoutService.setZoomLevel = function(zoomLevel){
-    drawingEngine.setZoomLevel(zoomLevel);
-};
-layoutService.drawPolygon = function(data){
-    drawingEngine.drawPolygon(data);
-};
-layoutService.drawRect = function(data){
-    drawingEngine.drawRect(data);  
-};
-layoutService.drawCircle = function(data){
-    drawingEngine.drawCircle(data);    
-};
-layoutService.expandPictureToScreen = function(){
-    drawingEngine.expandPictureToScreen();  
-};
-
-layoutService.getImageByCoords = function(coord, zoom, callbackFunction) {
-    var overlay = new google.maps.OverlayView(),
-    size = {width: 640, height: 640},
-    maxZoomService = new google.maps.MaxZoomService(),
-    map = new google.maps.Map(document.getElementById('map-canvas'), {
-        disableDefaultUI: true,
-        zoomControl: true,
-        zoomControlOptions: {
-            style: google.maps.ZoomControlStyle.LARGE,
-            position: google.maps.ControlPosition.RIGHT_CENTER
-        },
-        tilt: 0,
-        zoom: 20,
-        center: coord,
-        mapTypeId: google.maps.MapTypeId.SATELLITE,
-        maxZoom: 40
-    });
-    overlay.draw = function() {};
-    overlay.setMap(map);
-    maxZoomService.getMaxZoomAtLatLng(coord,
-        function(response) {
-            var allowedZoomLevel, satelliteImg ={}, siteBounds, basePoint, zoomLevel, imageBounds, metricSEpoint;
-            if (response.status == google.maps.MaxZoomStatus.OK && zoom == undefined ) {
-                allowedZoomLevel = response.zoom;
-            }else{
-                allowedZoomLevel = zoom;
+                for(var i = 0; i < groups[selectedObject.group].length; i++){
+                    if(selectedObject.id == groups[selectedObject.group][i].id){
+                        drawingEngine.deleteSelectedObject(groups[selectedObject.group][i]);
+                        groups.splice(i, 1);
+                    }                    
+                }
+                for(var j = 0; j < layers[selectedObject.layer].length; j++){
+                   if(selectedObject.id == layers[selectedObject.layer][j].id){
+                    drawingEngine.deleteSelectedObject(layers[selectedObject.layer][j]);
+                    layers.splice(j, 1);
+                } 
             }
-            siteBounds = googleImageProvider.getSiteBoundsByPoint(coord, size, overlay);
-            var calculatedZoomLevel = googleImageProvider.getBoundsZoomLevel(siteBounds, size);
-            allowedZoomLevel = (calculatedZoomLevel <= allowedZoomLevel) && (allowedZoomLevel != "ERROR") ? calculatedZoomLevel : allowedZoomLevel;
-            
-            basePoint = googleImageProvider.getNWPointFromBounds(siteBounds);
-            imageBounds = googleImageProvider.getGoogleTileCorners(siteBounds.getCenter(), allowedZoomLevel, size);
-            metricSEpoint = googleImageProvider.getMetricCoords(
-                googleImageProvider.getNWPointFromBounds(imageBounds),
-                googleImageProvider.getSEPointFromBounds(imageBounds));
-            satelliteImg.metricLocation = googleImageProvider.getMetricCoords(
-                basePoint, googleImageProvider.getNWPointFromBounds(imageBounds));
-            satelliteImg.metricLocation = {x: -satelliteImg.metricLocation.x, y: -satelliteImg.metricLocation.y};
-            satelliteImg.metricWidth = metricSEpoint.x;
-            satelliteImg.metricHeight = metricSEpoint.y;
-            var imgLink = "http://maps.googleapis.com/maps/api/staticmap?center="
-            + new google.maps.LatLng(coord.lat, coord.lng).toString()
-            + "&zoom=" + allowedZoomLevel
-            + "&size=" + size.width + "x" + size.height
-            + "&maptype=satellite&scale=2";
-            satelliteImg.link = imgLink;
-            layoutService.createBackgroundImage(satelliteImg);
-            return callbackFunction(satelliteImg);
+        }            
+    };
+    layoutService.createObject = function(points, options){
+        options.layer = options.layer != undefined ? options.layer : "default"; 
+        options.group = options.group != undefined ? options.group : "default"; 
+        var object = drawingEngine.createObject(canvas, points, options.style, false);
+        object.layer = options.layer; 
+        object.group = options.group; 
+        layers[options.layer].push(object);
+        groups[options.group].push(object);
+        this.addObjectToCanvas(object);
+    };
+    layoutService.setZoomLevel = function(zoomLevel){
+        drawingEngine.setZoomLevel(zoomLevel);
+    };
+    layoutService.drawPolygon = function(data){
+        drawingEngine.drawPolygon(data);
+    };
+    layoutService.drawRect = function(data){
+        drawingEngine.drawRect(data);  
+    };
+    layoutService.drawCircle = function(data){
+        drawingEngine.drawCircle(data);    
+    };
+    layoutService.expandPictureToScreen = function(){
+        drawingEngine.expandPictureToScreen();  
+    };
+
+    layoutService.getImageByCoords = function(coord, zoom, callbackFunction) {
+        var overlay = new google.maps.OverlayView(),
+        size = {width: 640, height: 640},
+        maxZoomService = new google.maps.MaxZoomService(),
+        map = new google.maps.Map(document.getElementById('map-canvas'), {
+            disableDefaultUI: true,
+            zoomControl: true,
+            zoomControlOptions: {
+                style: google.maps.ZoomControlStyle.LARGE,
+                position: google.maps.ControlPosition.RIGHT_CENTER
+            },
+            tilt: 0,
+            zoom: 20,
+            center: coord,
+            mapTypeId: google.maps.MapTypeId.SATELLITE,
+            maxZoom: 40
         });
+        overlay.draw = function() {};
+        overlay.setMap(map);
+        maxZoomService.getMaxZoomAtLatLng(coord,
+            function(response) {
+                var allowedZoomLevel, satelliteImg ={}, siteBounds, basePoint, zoomLevel, imageBounds, metricSEpoint;
+                if (response.status == google.maps.MaxZoomStatus.OK && zoom == undefined ) {
+                    allowedZoomLevel = response.zoom;
+                }else{
+                    allowedZoomLevel = zoom;
+                }
+                siteBounds = googleImageProvider.getSiteBoundsByPoint(coord, size, overlay);
+                var calculatedZoomLevel = googleImageProvider.getBoundsZoomLevel(siteBounds, size);
+                allowedZoomLevel = (calculatedZoomLevel <= allowedZoomLevel) && (allowedZoomLevel != "ERROR") ? calculatedZoomLevel : allowedZoomLevel;
+
+                basePoint = googleImageProvider.getNWPointFromBounds(siteBounds);
+                imageBounds = googleImageProvider.getGoogleTileCorners(siteBounds.getCenter(), allowedZoomLevel, size);
+                metricSEpoint = googleImageProvider.getMetricCoords(
+                    googleImageProvider.getNWPointFromBounds(imageBounds),
+                    googleImageProvider.getSEPointFromBounds(imageBounds));
+                satelliteImg.metricLocation = googleImageProvider.getMetricCoords(
+                    basePoint, googleImageProvider.getNWPointFromBounds(imageBounds));
+                satelliteImg.metricLocation = {x: -satelliteImg.metricLocation.x, y: -satelliteImg.metricLocation.y};
+                satelliteImg.metricWidth = metricSEpoint.x;
+                satelliteImg.metricHeight = metricSEpoint.y;
+                var imgLink = "http://maps.googleapis.com/maps/api/staticmap?center="
+                + new google.maps.LatLng(coord.lat, coord.lng).toString()
+                + "&zoom=" + allowedZoomLevel
+                + "&size=" + size.width + "x" + size.height
+                + "&maptype=satellite&scale=2";
+                satelliteImg.link = imgLink;
+                layoutService.createBackgroundImage(satelliteImg);
+                return callbackFunction(satelliteImg);
+            });
 };
 
 layoutService.addEventListeners = function(elementId) {
@@ -665,10 +697,18 @@ function addEventListenersToZoomControllerElements(elements){
             drawingEngine.getDefaultContainerScale());
     });
     elements.sliderObject.on("slide",function(e){
-        drawingEngine.setZoomLevel(e);
+        if(e !== null && typeof e === 'object'){
+            drawingEngine.setZoomLevel(e.value);
+        }else{
+            drawingEngine.setZoomLevel(e);
+        }
     });
     elements.sliderObject.on("slideStop",function(e){
-        drawingEngine.setZoomLevel(e);
+        if(e !== null && typeof e === 'object'){
+            drawingEngine.setZoomLevel(e.value);
+        }else{
+            drawingEngine.setZoomLevel(e);
+        }
     });
 };
 

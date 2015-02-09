@@ -70,6 +70,18 @@ var SpectrumLayoutDesigner = function(constructorOptions){
 	spectrumLayoutDesigner.deleteSelectedObject = function(objectType){
 		layoutService.deleteSelectedObject(objectType);
 	};
+	spectrumLayoutDesigner.addLayer = function(layerName){
+		layoutService.addLayer(layerName);
+	};
+	spectrumLayoutDesigner.removeLayer = function(layerName){
+		layoutService.removeLayer(layerName);
+	};
+	spectrumLayoutDesigner.addGroup = function(groupName){
+		layoutService.addGroup(groupName);
+	};
+	spectrumLayoutDesigner.removeGroup = function(groupName){
+		layoutService.removeGroup(groupName);
+	};
 
 	return spectrumLayoutDesigner;
 };
