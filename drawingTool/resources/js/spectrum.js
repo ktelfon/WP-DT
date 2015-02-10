@@ -67,8 +67,8 @@ var SpectrumLayoutDesigner = function(constructorOptions){
 		layoutService.drawCircle(data);	
 	};
 	// objectType - what type of object to delete, if not set delete selected
-	spectrumLayoutDesigner.deleteSelectedObject = function(objectType){
-		layoutService.deleteSelectedObject(objectType);
+	spectrumLayoutDesigner.deleteSelectedObject = function(groupName, layerName){
+		layoutService.deleteSelectedObject(groupName, layerName);
 	};
 	spectrumLayoutDesigner.addLayer = function(layerName){
 		layoutService.addLayer(layerName);
@@ -81,6 +81,9 @@ var SpectrumLayoutDesigner = function(constructorOptions){
 	};
 	spectrumLayoutDesigner.removeGroup = function(groupName){
 		layoutService.removeGroup(groupName);
+	};
+	spectrumLayoutDesigner.moveArrowOnSelectedShape = function(degrees){
+		layoutService.moveArrowOnSelectedShape(degrees);
 	};
 
 	return spectrumLayoutDesigner;

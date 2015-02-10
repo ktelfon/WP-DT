@@ -16,6 +16,7 @@ document.onreadystatechange = function () {
 
 		spectrumLD.createCanvas('canvas2','canvas2Wrap');
 		spectrumLD.addEventListeners();
+		spectrumLD.addZoomController();
 		document.body.style.cursor = "wait";
 		spectrumLD.getImageByCoords(coord, 21, function(){
 
@@ -72,6 +73,7 @@ document.onreadystatechange = function () {
 					layer: "test1",
 					group: "roof",
 					style: {
+						arrowDegrees: 270,
 						lineColor: "0xFF0000",
 						lineWidth: 1,
 						fill: "0x008000",
@@ -82,7 +84,7 @@ document.onreadystatechange = function () {
 
 			spectrumLD.expandPictureToScreen();
 			spectrumLD.setViewBoundriesToBackgroundImage();
-			spectrumLD.addZoomController();
+			
 			document.body.style.cursor = "default";
 		});
 }

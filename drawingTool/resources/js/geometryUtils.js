@@ -31,6 +31,53 @@ var GeometryUtils = function() {
 		return Math.abs(calculatePolygonArea(X, Y, points.length));
 	};
 
+	geometryUtils.getLeft = function(points) {
+		var left = Number.MAX_VALUE;
+		points.forEach(function(point) {
+			if (point.x < left) {
+				left = point.x;
+			}
+		});
+		return left;
+	};
+
+	geometryUtils.getRight = function(points) {
+		var right = Number.MIN_VALUE;
+		points.forEach(function(point) {
+			if (point.x > right) {
+				right = point.x;
+			}
+		});
+		return right;
+	};
+
+	geometryUtils.getTop = function(points) {
+		var top = Number.MAX_VALUE;
+		points.forEach(function(point) {
+			if (point.y < top) {
+				top = point.y;
+			}
+		});
+		return top;
+	};
+
+	geometryUtils.getBottom = function(points) {
+		var bottom = Number.MIN_VALUE;
+		points.forEach(function(point) {
+			if (point.y > bottom) {
+				bottom = point.y;
+			}
+		});
+		return bottom;
+	};
+
+	geometryUtils.getObjectCeneter = function(left, top, width, height){
+		return {
+			x: left + (width / 2),
+			y: top + (height / 2)
+		}
+	};
+
 	function calculatePolygonArea(X, Y, numPoints) {
 		var area = 0;
 		var j = numPoints - 1;

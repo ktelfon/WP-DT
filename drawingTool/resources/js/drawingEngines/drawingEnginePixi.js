@@ -283,6 +283,10 @@ drawingEngine.createBackgroundImage = function(satelliteImage){
 		var shape = createPolygon(points, style);
 
 		shape = addListenersToShape(shape);
+		drawingEngine.addObjectToCanvas(canvas, shape);
+
+		shape.points = points;
+		shape = getPositionProperties(shape, points);
 		return shape;
 	};
 
@@ -412,9 +416,47 @@ drawingEngine.createBackgroundImage = function(satelliteImage){
 		}
 	};
 
+	drawingEngine.createAzimuthArrow = function(object){
+		var arrowShape, arrowPoints, arrowStyle;
+		arrowPoints = [{x:0,y:0.3},{x:0.3,y:0},{x:0.3,y:1.7},{x:0.3,y:0},{x:0.6,y:0.3}];
+		arrowPoints = fromMetersToPixels(arrowPoints);
+		arrowStyle = {
+			lineColor: "0xFFFFFF",
+			lineWidth: 1.5,
+			fill: "0xFFFFFF",
+			opacity: 1.0,
+			lineStyle: {}
+		};
+		arrowShape = createPolygon(arrowPoints, arrowStyle);
+		drawingEngine.addObjectToCanvas(canvas, arrowShape);
+		arrowShape = getPositionProperties(arrowShape, arrowPoints);
+		arrowShape.position.set(
+			object.left + (object.realWidth / 2) - (arrowShape.realWidth / 2),
+			object.top + (object.realHeight / 2) - (arrowShape.realHeight / 2));
+		renderer.render(stage);
+		arrowShape.originalCentralPosition = geometryUtils.getObjectCeneter(arrowShape.left, arrowShape.top, arrowShape.realWidth, arrowShape.realHeight);
+		arrowShape.rotation = object.arrowDegrees * (Math.PI / 180);	
+		
+		return arrowShape;
+	};
+
+	drawingEngine.moveArrowOnSelectedShape = function(degrees){
+		if(selectedObject != undefined && selectedObject.group === "roof" && selectedObject.arrowObject != undefined){
+			selectedObject.arrowObject.rotation = degrees * (Math.PI / 180);
+		}
+	};
+
 	//
 	// Private Functions
 	//
+
+	function getPositionProperties(shape, points){
+		shape.top = geometryUtils.getTop(points);
+		shape.left = geometryUtils.getLeft(points);
+		shape.realWidth = geometryUtils.getRight(points) - shape.left; 
+		shape.realHeight = geometryUtils.getBottom(points) - shape.top;
+		return shape;
+	}
 
 	function startDrawing(drawingMode, data){
 		drawingModesProperties.drawingModeTypes[drawingMode] = true;
@@ -549,7 +591,7 @@ drawingEngine.createBackgroundImage = function(satelliteImage){
 		            }
 		            this.data = data;
 		            this.alpha = 0.8;
-		            this.dragging = isObjectDragging = true;
+		            // this.dragging = isObjectDragging = true;
 		            this.sx = this.data.getLocalPosition(shape).x * shape.scale.x;
 		            this.sy = this.data.getLocalPosition(shape).y * shape.scale.y;
 		            this.isSelected = true;   
