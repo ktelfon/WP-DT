@@ -429,14 +429,17 @@ drawingEngine.createBackgroundImage = function(satelliteImage){
 		};
 		arrowShape = createPolygon(arrowPoints, arrowStyle);
 		drawingEngine.addObjectToCanvas(canvas, arrowShape);
+
+		arrowShape.points = arrowPoints;
 		arrowShape = getPositionProperties(arrowShape, arrowPoints);
-		arrowShape.position.set(
-			object.left + (object.realWidth / 2) - (arrowShape.realWidth / 2),
-			object.top + (object.realHeight / 2) - (arrowShape.realHeight / 2));
+		arrowShape.offsetX = object.left + (object.realWidth / 2) - (arrowShape.realWidth / 2);
+		arrowShape.offsetY = object.top + (object.realHeight / 2) - (arrowShape.realHeight / 2);
+		arrowShape.position.set(arrowShape.offsetX, arrowShape.offsetY);
 		renderer.render(stage);
-		arrowShape.originalCentralPosition = geometryUtils.getObjectCeneter(arrowShape.left, arrowShape.top, arrowShape.realWidth, arrowShape.realHeight);
-		arrowShape.rotation = object.arrowDegrees * (Math.PI / 180);	
-		
+		arrowShape.pivot = new PIXI.Point((arrowShape.realWidth / 2),(arrowShape.realHeight / 2));	
+			renderer.render(stage);	
+		arrowShape.rotation = object.arrowDegrees * (Math.PI / 180);		
+		renderer.render(stage);
 		return arrowShape;
 	};
 
@@ -449,6 +452,14 @@ drawingEngine.createBackgroundImage = function(satelliteImage){
 	//
 	// Private Functions
 	//
+	
+	function applyOffsetToPoints(shape){
+		for (var i = 0; i < shape.points.length; i++) {
+			shape.points[i].x += shape.offsetX;
+			shape.points[i].y += shape.offsetY;
+		}
+		return shape;
+	}
 
 	function getPositionProperties(shape, points){
 		shape.top = geometryUtils.getTop(points);

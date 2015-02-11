@@ -28,8 +28,9 @@ document.onreadystatechange = function () {
 				{x:25,y:22},{x:5,y:22},{x:5,y:5}
 				],{
 					layer: "default",
-					group: "default",
+					group: "roof",
 					style: {
+						arrowDegrees: 90,
 						lineColor: "0xFF0000",
 						lineWidth: 1,
 						fill: "0x008000",
@@ -71,7 +72,7 @@ document.onreadystatechange = function () {
 				{x:2,y:2},{x:2+2.76,y:2},{x:2+2.76,y:2+ 6.1},{x:2,y:2+ 6.1}
 				],{
 					layer: "test1",
-					group: "roof",
+					group: "default",
 					style: {
 						arrowDegrees: 270,
 						lineColor: "0xFF0000",

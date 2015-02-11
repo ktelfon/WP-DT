@@ -78,6 +78,14 @@ var GeometryUtils = function() {
 		}
 	};
 
+	geometryUtils.rotatePoint = function(pointX, pointY, originX, originY, angle) {
+		angle = angle * Math.PI / 180.0;
+		return {
+			x: Math.cos(angle) * (pointX-originX) - Math.sin(angle) * (pointY-originY) + originX,
+			y: Math.sin(angle) * (pointX-originX) + Math.cos(angle) * (pointY-originY) + originY
+		};
+	}
+
 	function calculatePolygonArea(X, Y, numPoints) {
 		var area = 0;
 		var j = numPoints - 1;
