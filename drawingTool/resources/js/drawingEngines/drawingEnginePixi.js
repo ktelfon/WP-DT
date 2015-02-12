@@ -116,11 +116,7 @@ var DrawingEngine = function() {
 	/*
 	Adds mouse envent listeners to stage 
 	*/
-	drawingEngine.MouseWheelHandler= function(e){
-		var e = window.event || e; // old IE support
-		zoom(e.clientX, e.clientY, Math.max(-1, Math.min(1, (e.wheelDelta || -e.detail))));
-	};
-
+	
 	drawingEngine.addEventListeners = function(elementId){
 
 		stage.mousedown = function(interactionData){
@@ -438,7 +434,23 @@ drawingEngine.createBackgroundImage = function(satelliteImage){
 		renderer.render(stage);
 		arrowShape.pivot = new PIXI.Point((arrowShape.realWidth / 2),(arrowShape.realHeight / 2));	
 			renderer.render(stage);	
-		arrowShape.rotation = object.arrowDegrees * (Math.PI / 180);		
+		if(object.arrowDegrees != undefined){
+			arrowShape.rotation = object.arrowDegrees * (Math.PI / 180);					
+		}else{
+			var angleDeg = Math.atan2(
+				object.points[1].y - object.points[0].y,
+				object.points[1].x - object.points[0].x) * 180 / Math.PI;
+            if (angleDeg < 0) {
+                angleDeg = 360 + angleDeg;
+            }
+            if (geometryUtils.checkIfPolygonisClockwise(object.points) < 0) {
+                angleDeg += 180;
+            }
+            if (angleDeg > 360) {
+                angleDeg -= 360;
+            }
+            arrowShape.rotation = angleDeg * (Math.PI / 180);
+		}	
 		renderer.render(stage);
 		return arrowShape;
 	};

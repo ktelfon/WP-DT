@@ -85,6 +85,9 @@ var SpectrumLayoutDesigner = function(constructorOptions){
 	spectrumLayoutDesigner.moveArrowOnSelectedShape = function(degrees){
 		layoutService.moveArrowOnSelectedShape(degrees);
 	};
+	spectrumLayoutDesigner.getSelectedObject = function(){
+		return layoutService.getSelectedObject();
+	};
 
 	return spectrumLayoutDesigner;
 };

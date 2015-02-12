@@ -30,7 +30,7 @@ document.onreadystatechange = function () {
 					layer: "default",
 					group: "roof",
 					style: {
-						arrowDegrees: 90,
+						arrowDegrees: undefined,
 						lineColor: "0xFF0000",
 						lineWidth: 1,
 						fill: "0x008000",
@@ -123,7 +123,7 @@ function drawC(){
 function draw(){
 	spectrumLD.drawPolygon(	{
 		layer: "default",
-		group: "default",
+		group: "roof",
 		style: {
 			lineColor: "0xFF0000",
 			lineWidth: 1,

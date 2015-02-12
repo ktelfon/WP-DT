@@ -43,414 +43,90 @@ var LayoutService = function(constructorOptions) {
 
     initGroupsAndLayers();
 
-    function isPointInPoly(poly, pt) {
-        for (var c = false, i = -1, l = poly.length, j = l - 1; ++i < l; j = i)
-            ((poly[i].y <= pt.y && pt.y < poly[j].y) || (poly[j].y <= pt.y && pt.y < poly[i].y))
-        && (pt.x < (poly[j].x - poly[i].x) * (pt.y - poly[i].y) / (poly[j].y - poly[i].y) + poly[i].x)
-        && (c = !c);
-        return c;
-    }
+    
 
-    function checkForRectObjectIntersections(whatToCheck /* array of Rect objects */, whatToPlace/* Rect object */) {
-        for (var i = 0; i < whatToCheck.length; i++) {
-            if (inter.constructor.intersectPolygonPolygon(
-                drawingEngine.getRectObjectCoords(whatToCheck[i]),
-                drawingEngine.getRectObjectCoords(whatToPlace)
-                ).status === "Intersection"
-                && !angular.equals(whatToCheck[i], whatToPlace)) {
-                return false;
+    layoutService.addLayer = function(layerName){
+        var layerIsCreated = false;
+        for(var type in layers) {
+            if(layers.hasOwnProperty(layerName)) {
+                layerIsCreated = true;
+            }
         }
-    }
-    return true;
-}
-
-function checkIfObjectCanBePlacedInside(whereToPlace, whatToPlace) {
-    if (inter.constructor.intersectPolygonPolygon(
-        whereToPlace,
-        whatToPlace
-        ).status === "Intersection") {
-        return false;
-}
-for (var j = 0; j < whatToPlace.length; j++) {
-    if (!isPointInPoly(whereToPlace, whatToPlace[j])) {
-        return false;
-    }
-}
-return true;
-}
-
-function checkIfObstructionCanBePlaced(obstructionPoints) {
-    for (var i = 0; i < roofs; i++) {
-        if (!checkIfObjectCanBePlacedInside(roofs[i].polygonPoints, obstructionPoints)) {
-            return false;
+        if(!layerIsCreated){
+            layers[layerName] = [];
         }
-    }
-}
-
-layoutService.addLayer = function(layerName){
-    var layerIsCreated = false;
-    for(var type in layers) {
-        if(layers.hasOwnProperty(layerName)) {
-            layerIsCreated = true;
-        }
-    }
-    if(!layerIsCreated){
-        layers[layerName] = [];
-    }
-};
-
-layoutService.addGroup = function(groupName){
-    var groupIsCreated = false;
-    for(var type in groups) {
-        if(groups.hasOwnProperty(groupName)) {
-            groupIsCreated = true;
-        }
-    }
-    if(!groupIsCreated){
-        groups[groupName] = [];
-    }
-};
-
-layoutService.removeLayer = function(type){
-    layoutService.removeObjectsFromCanvas(layers[type][i]);
-    layers[type] = [];
-};
-
-layoutService.removeGroup = function(type){
-    layoutService.removeObjectsFromCanvas(groups[type]);
-    groups[type] = [];
-};
-
-layoutService.createObstruction = function(isPolygon, shapePoints, tmpRoof, obstructionStyle) {
-    var canBePlaced = false;
-    if (isPolygon) {
-        if (shapePoints.length > 2) {
-            var copyOfShapePoints = {};
-            copyOfShapePoints = util.copy(shapePoints);
-            var left = geometryUtils.getLeft(shapePoints),
-            top = geometryUtils.getTop(shapePoints);
-            var obstruction = this.createPolygonObject(
-                shapePoints, left, top,
-                obstructionStyle.strokeWidth,
-                obstructionStyle.strokeColor,
-                obstructionStyle.fill,
-                obstructionStyle.opacity);
-            obstruction.polygonPoints = copyOfShapePoints;
-            this.addObjectToCanvas(obstruction);
-            canBePlaced = this.checkIfObjectCanBePlacedInside(tmpRoof.polygonPoints, obstruction.polygonPoints);
-        } else {
-            return undefined;
-        }
-    } else {
-        obstruction.polygonPoints = this.getRectObjectCoords(obstruction);
-        canBePlaced = this.checkIfObjectCanBePlacedInside(tmpRoof.polygonPoints, obstruction.polygonPoints);
-    }
-    if (tmpRoof !== false && canBePlaced) {
-        this.bringToFront(obstruction);
-        obstruction.roof = tmpRoof;
-        tmpRoof.obstructions.push(obstruction);
-        tmpRoof.isGridCreated = false;
-        return obstruction;
-    } else {
-        this.removeObjectsFromCanvas([obstruction]);
-        return undefined;
-    }
-};
-
-layoutService.pan = function(options, allowedPan, canvasOffset, scale, prevX, prevY) {
-    var stopX, offsetX, stopY, offsetY;
-    if (options.e.clientX < prevX) {
-        if (allowedPan.xCurrentLeft > allowedPan.xLeft /* * (scale / allowedPan.scale)*/) {
-            stopX = true;
-        } else {
-            allowedPan.xCurrentLeft += prevX - options.e.clientX;
-            allowedPan.xCurrentRight = -allowedPan.xCurrentLeft;
-        }
-    }
-    if (options.e.clientX > prevX) {
-        if (allowedPan.xCurrentRight > allowedPan.xRight/* * (scale / allowedPan.scale)*/) {
-            stopX = true;
-        } else {
-            allowedPan.xCurrentRight += options.e.clientX - prevX;
-            allowedPan.xCurrentLeft = -allowedPan.xCurrentRight;
-        }
-    }
-    if (options.e.clientY < prevY) {
-        if (allowedPan.yCurrentTop > allowedPan.yTop/* * (scale / allowedPan.scale)*/) {
-            stopY = true;
-        } else {
-            allowedPan.yCurrentTop += prevY - options.e.clientY;
-            allowedPan.yCurrentBottom = -allowedPan.yCurrentTop;
-        }
-    }
-    if (options.e.clientY > prevY) {
-        if (allowedPan.yCurrentBottom > allowedPan.yBottom /* * (scale / allowedPan.scale)*/) {
-            stopY = true;
-        } else {
-            allowedPan.yCurrentBottom += options.e.clientY - prevY;
-            allowedPan.yCurrentTop = -allowedPan.yCurrentBottom;
-        }
-    }
-    if (stopX !== true || stopY !== true) {
-        offsetX = stopX === true ? 0 : (options.e.clientX - prevX);
-        offsetY = stopY === true ? 0 : (options.e.clientY - prevY);
-        var result = drawingEngine.setTransform(
-            canvasOffset,
-            canvasOffset.x + offsetX,
-            canvasOffset.y + offsetY,
-            scale, canvas);
-        scale = result.scale;
-        prevX = options.e.clientX;
-        prevY = options.e.clientY;
-        return {
-            scale: scale,
-            allowedPan: allowedPan,
-            prevX: prevX,
-            prevY: prevY
-        };
-    }
-};
-layoutService.centerView = function(canvasOffset, scale) {
-    drawingEngine.centerView(canvasOffset, scale);
-};
-layoutService.setViewBoundriesToBackgroundImage = function(){
-    drawingEngine.setViewBoundriesToBackgroundImage();
-};
-layoutService.setTransform = function(canvasOffset, offsetX, offsetY, scale) {
-    return drawingEngine.setTransform(canvasOffset, offsetX, offsetY, scale, canvas);
-};
-layoutService.zoom = function(canvasOffset, scale, zoomFactor) {
-    return drawingEngine.zoom(canvas, this.getCanvasSize(), canvasOffset, scale, zoomFactor);
-};
-layoutService.createCanvas = function(elementId, elementWrap) {
-    canvasElement = document.getElementById(elementId);
-    canvasWrapElement = document.getElementById(elementWrap);
-    canvas = drawingEngine.createCanvas(elementId, elementWrap);
-    canvasElement.addEventListener("objectCreated", function(e) {
-        organiseObject(e.detail.data, e.detail.data.object);
-    });
-    return canvas;
-};
-layoutService.increaseZoomLevel = function(){
-    drawingEngine.increaseZoomLevel();
-};
-layoutService.reduceZoomLevel = function(){
-    drawingEngine.reduceZoomLevel();
-};  
-layoutService.setCanvasProperty = function(propName, value) {
-    canvas[propName] = value;
-};
-layoutService.setCanvasSize = function(width, height) {
-    drawingEngine.setCanvasSize(canvas, width, height);
-};
-layoutService.getCanvasSize = function() {
-    return drawingEngine.getCanvasSize(canvas);
-};
-layoutService.getAllObjectsByType = function(type) {
-    return drawingEngine.getAllObjectsByType(canvas, type);
-};
-
-layoutService.checkIfPolygonisClockwise = function(points) {
-    return geometryUtils.checkIfPolygonisClockwise(points);
-};
-
-layoutService.pointsDistance = function(point1, point2) {
-    return geometryUtils.pointsDistance(point1, point2);
-};
-
-layoutService.calculatePolygonArea = function(points) {
-    return geometryUtils.calculatePolygonArea(points);
-};
-
-layoutService.bringToFront = function(object) {
-    drawingEngine.bringToFront(object);
-};
-
-layoutService.getRectObjectCoords = function(module) {
-    return drawingEngine.getRectObjectCoords(module);
-};
-
-layoutService.setWidthHeight = function(isPortrait, type, tilt) {
-    var width, height;
-    if (isPortrait) {
-        width = type.width;
-        height = type.height * Math.cos(tilt * (Math.PI / 180));
-    } else {
-        width = type.height;
-        height = type.width * Math.cos(tilt * (Math.PI / 180));
-    }
-    return {
-        width: width,
-        height: height
     };
-};
 
-layoutService.checkIfObjectCanBePlacedInside = function(whereToPlace/*array of points*/, whatToPlace/*array of points*/) {
-    return checkIfObjectCanBePlacedInside(whereToPlace, whatToPlace);
-};
-
-layoutService.checkIfObjectIntersectsAnyObject = function(whatToCheck , whatToPlace) {
-    for (var j = 0; j < whatToCheck.length; j++) {
-        for (var z = 0; z < whatToCheck[j].setbackPoints.length; z++) {
-            if (isPointInPoly(whatToPlace, whatToCheck[j].setbackPoints[z])) {
-                return true;
-            }
-            for (var i = 0; i < whatToPlace.length; i++) {
-                if (isPointInPoly(whatToCheck[j].setbackPoints, whatToPlace[i])) {
-                    return true;
-                }
+    layoutService.addGroup = function(groupName){
+        var groupIsCreated = false;
+        for(var type in groups) {
+            if(groups.hasOwnProperty(groupName)) {
+                groupIsCreated = true;
             }
         }
-        if (inter.constructor.intersectPolygonPolygon(
-            whatToCheck[j].setbackPoints,
-            whatToPlace
-            ).status === "Intersection") {
-            return true;
-    }
-}
-return false;
-};
-layoutService.checkForRectObjectIntersections = function(whatToCheck /* array of Rect objects */, whatToPlace/* RectObject */) {
-    return checkForRectObjectIntersections(whatToCheck, whatToPlace);
-};
-layoutService.isPointInPoly = function(poly, pt) {
-    return isPointInPoly(poly, pt);
-};
-layoutService.getMouseCoords = function(canvas, canvasOffset, scale, e) {
-    return drawingEngine.getMouseCoords(canvas, canvasOffset, scale, e);
-};
-layoutService.mouseOverCell = function(e, canvasOffset, scale, canvas, selectedRoof) {
-            //check if grid i active
-            if (selectedRoof.gridLayout !== undefined) {
-                //convert points to canvas transformed point
-                var conversedPoint = drawingEngine.getMouseCoords(canvas, canvasOffset, scale, e);
-                //find cell that mouse is over
-                for (var i = 0; i < selectedRoof.gridLayout.length; i++) {
-                    if (isPointInPoly(drawingEngine.getRectObjectCoords(selectedRoof.gridLayout[i]),
-                        conversedPoint)) {
-                        return  {
-                            mouseOnCell: true,
-                            cellNumber: i,
-                            obj: selectedRoof.gridLayout[i]
-                        };
-                    }
-                }
-                return {mouseOnCell: false};
-            }
-        };
+        if(!groupIsCreated){
+            groups[groupName] = [];
+        }
+    };
 
-        layoutService.addObjectToCanvas = function(whatToAdd) {
-            drawingEngine.addObjectToCanvas(canvas, whatToAdd);
-        };
-        layoutService.createLine = function(points, x, y, strokeColor, strokeWidth, strokeDashArray) {
-            return drawingEngine.createLine(points, x, y, strokeColor, strokeWidth, strokeDashArray);
-        };
-        layoutService.createGridCell = function(scale, id, isPortrait, azimuth, tilt, moduleType, left, top, fill, objectType, label) {
-            return drawingEngine.createGridCell(scale, id, isPortrait, azimuth, tilt, moduleType, left, top, fill, objectType, label);
-        };
-        layoutService.createModule = function(scale, id, isPortrait, azimuth, tilt, type, mleft, mtop) {
-            var module = drawingEngine.createModule(scale, id, isPortrait, azimuth, tilt, type, mleft, mtop)
-            this.addObjectToCanvas(module);
-            return module;
-        };
-        layoutService.createPolygonObject = function(points, left, top, strokeWidth, strokeColor, fill, opacity, type, strokeDash, id) {
-            return drawingEngine.createPolygonObject(points, left, top, strokeWidth, strokeColor, fill, opacity, type, strokeDash, id);
-        };
-        layoutService.createReactangleObject = function(left, top, strokeWidth, strokeColor, fill, opacity, width, height) {
-            return drawingEngine.createReactangleObject(left, top, strokeWidth, strokeColor, fill, opacity, width, height);
-        };
-        layoutService.createCircleObject = function(left, top, strokeWidth, strokeColor, fill, opacity, radius) {
-            return drawingEngine.createCircleObject(left, top, strokeWidth, strokeColor, fill, opacity, radius);
-        };
-        layoutService.createBackgroundImage = function(satelliteImage) {
-            /*
-             satelliteImg.metricLocation 
-             satelliteImg.metricLocation 
-             satelliteImg.metricWidth 
-             satelliteImg.metricHeight
-             satelliteImg.imageBase64
-             */
-             var image = drawingEngine.createBackgroundImage(satelliteImage, canvas);
-             this.addObjectToCanvas(image);
-             return image;
-         };
-         layoutService.createAdjustGrid = function(cells, roof, height, width) {
-            return drawingEngine.createAdjustGrid(cells, roof, height, width);
-        };
-        layoutService.createAzimuthArrow = function(x, y, sizeCoef, opacity) {
-            return drawingEngine.createAzimuthArrow(x, y, sizeCoef, opacity);
-        };
-        layoutService.mouseOverRoof = function(e, scale, canvasOffset, canvas, roofData) {
-            var conversedPoint = drawingEngine.getMouseCoords(canvas, canvasOffset, scale, e);
-            for (var i = 0; i < roofData.length; i++) {
-                if (isPointInPoly(roofData[i].polygonPoints, conversedPoint)) {
-                    return {
-                        found: true,
-                        roof: roofData[i].roofPolygon
-                    };
-                }
-            }
-            return {found: false};
-        };
-        layoutService.setObjectActive = function(mouseX, mouseY, roofs) {
-            for (var i = 0; i < roofs.length; i++) {
-                if (isPointInPoly(roofs[i].polygonPoints, {x: mouseX, y: mouseY})) {
-                    for (var j = 0; j < roofs[i].obstructions.length; j++) {
-                        if (isPointInPoly(roofs[i].obstructions[j].polygonPoints, {x: mouseX, y: mouseY})) {
-                            return roofs[i].obstructions[j];
-                        }
-                    }
-                    return roofs[i];
-                }
-            }
-            return false;
-        };
-        layoutService.mouseOverModule = function(e, canvasOffset, scale, canvas, roofData) {
-            var conversedPoint = drawingEngine.getMouseCoords(canvas, canvasOffset, scale, e);
-            for (var i = 0; i < roofData.length; i++) {
-                for (var j = 0; j < roofData[i].layout.layoutUnits.length; j++) {
-                    if (isPointInPoly(
-                        drawingEngine.getRectObjectCoords(roofData[i].layout.layoutUnits[j].moduleDisplayObject),
-                        conversedPoint)) {
-                        return {
-                            found: true,
-                            obj: roofData[i].layout.layoutUnits[j].moduleDisplayObject
-                        };
-                    }
-                }
-            }
-            return {found: false};
-        };
-      
-        layoutService.scaleAll = function() {
-            drawingEngine.scaleAll(canvas);
-        };
-        layoutService.checkIfObjectInsideObject = function(firstObjPoints, secondObjPoints) {
-            for (var i = 0; i < firstObjPoints.legth; i++) {
-                if (!isPointInPoly(secondObjPoints, firstObjPoints[i])) {
-                    return false;
-                }
-            }
-            if (inter.constructor.intersectPolygonPolygon(firstObjPoints, secondObjPoints).status === "Intersection") {
-                return false;
-            }
-        };
-        layoutService.getTransformedPoints = function(points, widthCoef, heightCoef, canvasOffset) {
-            var transformPoints = [];
-            for (var p = 0; p < points.length; p++) {
-                transformPoints.push({
-                    x: (points[p].x * widthCoef) + (canvasOffset != undefined && canvasOffset.w != undefined ? canvasOffset.w / 2 : 0),
-                    y: (points[p].y * heightCoef) + (canvasOffset != undefined && canvasOffset.h != undefined ? canvasOffset.h / 2 : 0)
-                });
-            }
-            return transformPoints;
-        };
-        layoutService.setValuesForObject = function(object, top, left, width, height, strokeColor, strokeWidth, fill, opacity, strokeDash, visibility) {
-            return drawingEngine.setValuesForObject(object, top, left, width, height, strokeColor, strokeWidth, fill, opacity, strokeDash, visibility);
-        };
-        layoutService.getImageFromCanvas = function(canvas) {
-            drawingEngine.getImageFromCanvas(canvas);
-        };
+    layoutService.removeLayer = function(type){
+        layoutService.removeObjectsFromCanvas(layers[type][i]);
+        layers[type] = [];
+    };
+
+    layoutService.removeGroup = function(type){
+        layoutService.removeObjectsFromCanvas(groups[type]);
+        groups[type] = [];
+    };
+
+    layoutService.centerView = function(canvasOffset, scale) {
+        drawingEngine.centerView(canvasOffset, scale);
+    };
+    layoutService.setViewBoundriesToBackgroundImage = function(){
+        drawingEngine.setViewBoundriesToBackgroundImage();
+    };
+    layoutService.zoom = function(canvasOffset, scale, zoomFactor) {
+        return drawingEngine.zoom(canvas, this.getCanvasSize(), canvasOffset, scale, zoomFactor);
+    };
+    layoutService.createCanvas = function(elementId, elementWrap) {
+        canvasElement = document.getElementById(elementId);
+        canvasWrapElement = document.getElementById(elementWrap);
+        canvas = drawingEngine.createCanvas(elementId, elementWrap);
+        canvasElement.addEventListener("objectCreated", function(e) {
+            organiseObject(e.detail.data, e.detail.object);
+        });
+        return canvas;
+    };
+    layoutService.increaseZoomLevel = function(){
+        drawingEngine.increaseZoomLevel();
+    };
+    layoutService.reduceZoomLevel = function(){
+        drawingEngine.reduceZoomLevel();
+    }; 
+
+    layoutService.checkIfPolygonisClockwise = function(points) {
+        return geometryUtils.checkIfPolygonisClockwise(points);
+    };
+
+    layoutService.pointsDistance = function(point1, point2) {
+        return geometryUtils.pointsDistance(point1, point2);
+    };
+
+    layoutService.calculatePolygonArea = function(points) {
+        return geometryUtils.calculatePolygonArea(points);
+    };
+
+    layoutService.addObjectToCanvas = function(whatToAdd) {
+        drawingEngine.addObjectToCanvas(canvas, whatToAdd);
+    };
+
+    layoutService.createBackgroundImage = function(satelliteImage) {
+        // satelliteImg.metricLocation, satelliteImg.metricLocation, satelliteImg.metricWidth, satelliteImg.metricHeight, satelliteImg.imageBase64
+        var image = drawingEngine.createBackgroundImage(satelliteImage, canvas);
+        this.addObjectToCanvas(image);
+        return image;
+    };
+
         // remove a group of objects
         layoutService.removeObjectsFromCanvas = function(whatToRemove) {
             return drawingEngine.removeObjectsFromCanvas(whatToRemove, canvas);
@@ -522,6 +198,10 @@ layoutService.mouseOverCell = function(e, canvasOffset, scale, canvas, selectedR
                 layoutService.removeZoomController();
                 layoutService.addZoomController();
             }  
+        };
+
+        layoutService.getSelectedObject = function(){
+            return drawingEngine.getSelectedObject().id;
         };
 
         layoutService.getImageByCoords = function(coord, zoom, callbackFunction) {
@@ -681,10 +361,11 @@ function organiseObject(data, object){
 
     object.layer = data.layer; 
     object.group = data.group; 
+    if(object.id != undefined){
+        object.id = util.generateUUID();
+    }
 
-    object.id = getObjectIdNumber();
-
-    if(data.group === "roof" && data.style.arrowDegrees != undefined){
+    if(data.group === "roof"){
         object.arrowDegrees = data.style.arrowDegrees;
         object.arrowObject = drawingEngine.createAzimuthArrow(object);
     }
@@ -693,10 +374,7 @@ function organiseObject(data, object){
 function setStylesToZoomControllerElements(elements){
     // setting style to slider element
     elements.controllerWrap.style.top = (canvasWrapElement.offsetTop + (elements.zoomInButton.offsetHeight * 2.5)).toString()+"px"; 
-    // elements.slider.style.height = (canvasWrapElement.offsetHeight * 0.65).toString()+"px";
-    // setting style to zoom in button element
-    elements.zoomInButton.style.top = (-elements.zoomInButton.offsetHeight*1.5).toString()+"px";
-    // setting style to zoom out button element
+    elements.zoomInButton.style.top = (-elements.zoomInButton.offsetHeight * 1.5).toString()+"px";
     elements.zoomOutButton.style.top = (elements.controllerWrap.offsetHeight + elements.zoomInButton.offsetHeight*0.5).toString()+"px";
 }
 
@@ -741,10 +419,10 @@ function MouseWheelHandler(e){
 if (constructorOptions != undefined) {
             //  (canvasID)
             if (constructorOptions.canvasId != undefined &&
-             constructorOptions.canvasIdWrap != undefined &&
-             constructorOptions.zoom == undefined &&
-             constructorOptions.mapImage == undefined &&
-             constructorOptions.coord == undefined) {
+               constructorOptions.canvasIdWrap != undefined &&
+               constructorOptions.zoom == undefined &&
+               constructorOptions.mapImage == undefined &&
+               constructorOptions.coord == undefined) {
                 layoutService.createCanvas(constructorOptions.canvasId, constructorOptions.canvasIdWrap);
             layoutService.addEventListeners();
         }
