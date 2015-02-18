@@ -205,56 +205,8 @@ var LayoutService = function(constructorOptions) {
         };
 
         layoutService.getImageByCoords = function(coord, zoom, callbackFunction) {
-            var overlay = new google.maps.OverlayView(),
-            size = {width: 640, height: 640},
-            maxZoomService = new google.maps.MaxZoomService(),
-            map = new google.maps.Map(document.getElementById('map-canvas'), {
-                disableDefaultUI: true,
-                zoomControl: true,
-                zoomControlOptions: {
-                    style: google.maps.ZoomControlStyle.LARGE,
-                    position: google.maps.ControlPosition.RIGHT_CENTER
-                },
-                tilt: 0,
-                zoom: 20,
-                center: coord,
-                mapTypeId: google.maps.MapTypeId.SATELLITE,
-                maxZoom: 40
-            });
-            overlay.draw = function() {};
-            overlay.setMap(map);
-            maxZoomService.getMaxZoomAtLatLng(coord,
-                function(response) {
-                    var allowedZoomLevel, satelliteImg ={}, siteBounds, basePoint, zoomLevel, imageBounds, metricSEpoint;
-                    if (response.status == google.maps.MaxZoomStatus.OK && zoom == undefined ) {
-                        allowedZoomLevel = response.zoom;
-                    }else{
-                        allowedZoomLevel = zoom;
-                    }
-                    siteBounds = googleImageProvider.getSiteBoundsByPoint(coord, size, overlay);
-                    var calculatedZoomLevel = googleImageProvider.getBoundsZoomLevel(siteBounds, size);
-                    allowedZoomLevel = (calculatedZoomLevel <= allowedZoomLevel) && (allowedZoomLevel != "ERROR") ? calculatedZoomLevel : allowedZoomLevel;
-
-                    basePoint = googleImageProvider.getNWPointFromBounds(siteBounds);
-                    imageBounds = googleImageProvider.getGoogleTileCorners(siteBounds.getCenter(), allowedZoomLevel, size);
-                    metricSEpoint = googleImageProvider.getMetricCoords(
-                        googleImageProvider.getNWPointFromBounds(imageBounds),
-                        googleImageProvider.getSEPointFromBounds(imageBounds));
-                    satelliteImg.metricLocation = googleImageProvider.getMetricCoords(
-                        basePoint, googleImageProvider.getNWPointFromBounds(imageBounds));
-                    satelliteImg.metricLocation = {x: -satelliteImg.metricLocation.x, y: -satelliteImg.metricLocation.y};
-                    satelliteImg.metricWidth = metricSEpoint.x;
-                    satelliteImg.metricHeight = metricSEpoint.y;
-                    var imgLink = "http://maps.googleapis.com/maps/api/staticmap?center="
-                    + new google.maps.LatLng(coord.lat, coord.lng).toString()
-                    + "&zoom=" + allowedZoomLevel
-                    + "&size=" + size.width + "x" + size.height
-                    + "&maptype=satellite&scale=2";
-                    satelliteImg.link = imgLink;
-                    layoutService.createBackgroundImage(satelliteImg);
-                    return callbackFunction(satelliteImg);
-                });
-};
+            layoutService.createBackgroundImage(googleImageProvider.getImageByCoords(coord, zoom, callbackFunction));
+        };
 
 layoutService.addEventListeners = function(elementId) {
 
